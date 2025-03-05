@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\mcp_get_source.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\mcp_get_source.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\mcp_get_source.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\mcp_get_source.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\mcp_get_source.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_.4E61956F.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\refint\mcp_get_source.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\mcp_get_source.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_source\obj\Debug\net9.0\ref\mcp_get_source.dll

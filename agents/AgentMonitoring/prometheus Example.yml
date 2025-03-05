@@ -1,0 +1,24 @@
+global:
+  # Global default values for query and evaluation intervals
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Change the destination IPs and ports in accordance with the configuration files of your agent.
+scrape_configs:
+  - job_name: 'OpenAI-comp-API-Agent'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - '192.168.123.123:7777'
+
+  - job_name: 'ChatBot-Agent'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+          - '192.168.123.123:5001'
+
+  - job_name: 'IoT_MQTT_Agent'
+    scrape_interval: 5s
+    static_configs:
+      - targets:
+        - '192.168.123.123:9101'

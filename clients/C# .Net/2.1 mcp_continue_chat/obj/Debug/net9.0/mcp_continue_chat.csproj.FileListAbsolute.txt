@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\mcp_continue_chat.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\mcp_continue_chat.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\mcp_continue_chat.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\mcp_continue_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\mcp_continue_chat.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_cont.EF178231.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\refint\mcp_continue_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\mcp_continue_chat.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_continue_chat\obj\Debug\net9.0\ref\mcp_continue_chat.dll

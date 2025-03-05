@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\mcp_delete_group.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\mcp_delete_group.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\mcp_delete_group.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\mcp_delete_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\mcp_delete_group.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_dele.FE1C6298.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\refint\mcp_delete_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\mcp_delete_group.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_group\obj\Debug\net9.0\ref\mcp_delete_group.dll

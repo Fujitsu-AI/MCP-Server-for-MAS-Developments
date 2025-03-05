@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\mcp_get_chat_info.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\mcp_get_chat_info.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\mcp_get_chat_info.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\mcp_get_chat_info.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\mcp_get_chat_info.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_.DFF47B4E.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\refint\mcp_get_chat_info.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\mcp_get_chat_info.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_get_chat_info\obj\Debug\net9.0\ref\mcp_get_chat_info.dll

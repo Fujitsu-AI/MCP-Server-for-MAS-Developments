@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\mcp_store_group.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\mcp_store_group.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\mcp_store_group.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\mcp_store_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\mcp_store_group.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_stor.AFB4AA35.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\refint\mcp_store_group.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\mcp_store_group.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_store_group\obj\Debug\net9.0\ref\mcp_store_group.dll

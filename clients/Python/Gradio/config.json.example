@@ -1,0 +1,9 @@
+{
+	"base_url": "https://.../api/v1",
+    "proxy_user": "",
+    "proxy_password": "",
+	"access_header": "",
+    "groups": [],
+    "language": "en",
+    "use_public": true
+}

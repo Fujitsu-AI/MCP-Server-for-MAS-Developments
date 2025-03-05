@@ -1,0 +1,11 @@
+{
+    "server_ip": "XXX.XXX.XXX.XXX",
+    "server_port": "XXXX",
+    "email": "user@example.com",
+    "password": "********",
+    "groups": ["Gruppe1"],
+    "language": "en",
+    "api_ip": "XXX.XXX.XXX.XXX",
+    "api_port": "XXXX",
+    "api_key": "********"
+}

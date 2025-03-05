@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\mcp_list_groups.exe
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\mcp_list_groups.deps.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\mcp_list_groups.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\mcp_list_groups.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\mcp_list_groups.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list.EBD5E0D2.Up2Date
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\refint\mcp_list_groups.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\mcp_list_groups.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_list_groups\obj\Debug\net9.0\ref\mcp_list_groups.dll

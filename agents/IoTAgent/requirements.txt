@@ -1,0 +1,8 @@
+paho-mqtt
+paramiko
+argparse
+sockets
+datetime
+logging
+requests
+prometheus_client

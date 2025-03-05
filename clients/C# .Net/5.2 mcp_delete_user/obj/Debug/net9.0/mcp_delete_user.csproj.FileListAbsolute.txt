@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\mcp_delete_user.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\mcp_delete_user.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\mcp_delete_user.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\mcp_delete_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\mcp_delete_user.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_dele.CEB7E33D.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\refint\mcp_delete_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\mcp_delete_user.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_delete_user\obj\Debug\net9.0\ref\mcp_delete_user.dll

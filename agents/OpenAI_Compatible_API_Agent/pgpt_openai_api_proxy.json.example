@@ -1,0 +1,12 @@
+{
+	"base_url": "https://example.com/api/v1",
+	"proxy_user": "user@example.com",
+	"proxy_password": "SecurePassword$123",
+	"access_header": "",
+	"groups": ["Sample Group"],
+	"language": "en",
+	"use_public": true,
+	"api_ip": "0.0.0.0",
+    "api_port": 8001,
+	"whitelist_keys": []
+}

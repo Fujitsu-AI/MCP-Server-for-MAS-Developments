@@ -1,0 +1,53 @@
+{
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s | %(level_icon)s %(component)s :%(tag)s | %(message_type)s | %(message)s",
+        "date_format": "%Y-%m-%d %H:%M:%S"
+    },
+    "mqtt": {
+        "broker": "your.broker.ip.address",
+        "port": 1883,
+        "username": "your_mqtt_username",
+        "password": "your_mqtt_password",
+        "topic": "<your MQTT topic to subscribe)",
+        "vehicle": "<your MQTT entry>"
+    },
+    "files": {
+        "base_filename": "TM3-IoT",
+        "json_file_name": "mqtt.json",
+        "translated_text_files": {
+            "de": "translated_text_de.txt",
+            "en": "translated_text_en.txt"
+        },
+        "size_limits": {
+            "json": 1048576,
+            "de_txt": 512000,
+            "en_txt": 512000
+        },
+        "local_subdirs": {
+            "json": "local/json",
+            "de_txt": "local/de",
+            "en_txt": "local/en"
+        },
+        "sftp_subdirs": {
+            "json": "remote/json",
+            "de_txt": "remote/de",
+            "en_txt": "remote/en"
+        }
+    },
+    "sftp": {
+        "host": "your.sftp.host.address",
+        "port": 2222,
+        "username": "your_sftp_username",
+        "password": "your_sftp_password",
+        "remote_path": "/"
+    },
+    "chatbot_agent": {
+        "api_url": "http://your.chatbot.api.url/ask",
+        "api_key": "your_secure_api_key"
+    },
+    "languages": ["en", "de"],
+    "metrics": {
+    "port": 9101
+  }
+}

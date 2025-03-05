@@ -1,0 +1,10 @@
+services:
+ pgpt-oai-api:
+    container_name: pgpt-oai-api
+    build:
+      context: ../../
+      dockerfile: agents/OpenAI_Compatible_API_Agent/Dockerfile
+    ports:
+      - 8008:8001
+    volumes:
+      - .:/app

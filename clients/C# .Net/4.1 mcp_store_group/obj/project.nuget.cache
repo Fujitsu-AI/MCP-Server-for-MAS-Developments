@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "c+W2+FZuzgQ=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\uwuertz\\AI\\mcp-client\\mcp_store_group\\mcp_store_group.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\uwuertz\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\mcp_logout.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\mcp_logout.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\mcp_logout.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\mcp_logout.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\mcp_logout.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.csproj.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\refint\mcp_logout.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\mcp_logout.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_logout\obj\Debug\net9.0\ref\mcp_logout.dll

@@ -1,0 +1,14 @@
+{
+    "email": "anonym@example.com",
+    "password": "********",
+    "groups": ["BUND Gesetzentwurf"],
+    "language": "en",
+    "api_ip": "0.0.0.0",
+    "api_port": 8002,
+    "whitelist_keys": [],
+    "mcp_server": {
+        "host": "172.24.123.123",
+        "port": 5000
+    }
+}
+

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatBot Agent Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center; /* Zentriert den Inhalt */
+        }
+        .logo {
+            display: block;
+            margin: 0 auto 20px; /* Zentriert das Logo und fügt Abstand ein */
+            width: 150px;
+            height: auto;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        textarea, select, input, button {
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .response-box {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Logo einfügen -->
+        <img src="Logo_light.svg" alt="Logo" class="logo">
+
+        <h1>ChatBot Agent</h1>
+
+        <form id="queryForm">
+            <label for="question">Frage:</label>
+            <textarea id="question" rows="3" placeholder="Geben Sie Ihre Frage ein..." required></textarea>
+
+            <label for="language">Sprache:</label>
+            <select id="language">
+                <option value="de" selected>Deutsch</option>
+                <option value="en">Englisch</option>
+            </select>
+
+            <label for="groups">Gruppen (optional, getrennt durch Kommas):</label>
+            <input type="text" id="groups" placeholder="Beispiel: Gruppe1, Gruppe2">
+
+            <label>
+                <input type="checkbox" id="usePublic" checked>
+                Öffentliche Daten verwenden
+            </label>
+
+            <button type="submit">Anfrage senden</button>
+        </form>
+
+        <div class="response-box" id="responseBox">
+            Antwort wird hier angezeigt...
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = "http://192.168.100.185:5001/ask"; // URL der API
+        const apiKey = "IhrSichererAPIKey123"; // API-Key
+
+        document.getElementById("queryForm").addEventListener("submit", async function(event) {
+            event.preventDefault();
+
+            // Eingaben aus dem Formular abrufen
+            const question = document.getElementById("question").value.trim();
+            const language = document.getElementById("language").value;
+            const groupsInput = document.getElementById("groups").value;
+            const groups = groupsInput
+                .split(",")
+                .map(group => group.trim())
+                .filter(group => group); // Leere Gruppen entfernen
+            const usePublic = document.getElementById("usePublic").checked;
+
+            if (!question) {
+                alert("Bitte geben Sie eine Frage ein.");
+                return;
+            }
+
+            // JSON-Body für die Anfrage erstellen
+            const body = {
+                question: question,
+                usePublic: usePublic,
+                groups: groups,
+                language: language
+            };
+
+            // Anzeige der Anfrage im Response-Box (optional)
+            document.getElementById("responseBox").textContent = "Anfrage wird gesendet...";
+
+            // Anfrage senden
+            try {
+                const response = await fetch(apiUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-API-KEY": apiKey // Korrigierter Header
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Extrahiere das 'answer'-Feld und entferne mögliche Anführungszeichen
+                    let answer = data.answer || "";
+                    if (answer.startsWith('"') && answer.endsWith('"')) {
+                        answer = answer.substring(1, answer.length - 1);
+                    }
+
+                    // Optional: Entschlüsselung von Unicode-Zeichen
+                    try {
+                        answer = decodeURIComponent(escape(answer));
+                    } catch (e) {
+                        console.warn("Unicode-Entschlüsselung fehlgeschlagen:", e);
+                    }
+
+                    // Anzeige der Antwort
+                    document.getElementById("responseBox").textContent = answer;
+                } else {
+                    // Fehlerbehandlung bei HTTP-Fehlern
+                    const errorText = await response.text();
+                    document.getElementById("responseBox").textContent = `Fehler: ${response.status} ${response.statusText}\n${errorText}`;
+                }
+            } catch (error) {
+                // Fehlerbehandlung bei Netzwerk- oder anderen Fehlern
+                document.getElementById("responseBox").textContent = `Fehler bei der Anfrage: ${error.message}`;
+            }
+        });
+    </script>
+</body>
+</html>

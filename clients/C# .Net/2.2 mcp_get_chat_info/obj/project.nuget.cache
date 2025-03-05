@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "fbcfToCBWLU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\uwuertz\\AI\\mcp-client\\mcp_get_chat_info\\mcp_get_chat_info.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\uwuertz\\.nuget\\packages\\newtonsoft.json\\13.0.3\\newtonsoft.json.13.0.3.nupkg.sha512"
+  ],
+  "logs": []
+}

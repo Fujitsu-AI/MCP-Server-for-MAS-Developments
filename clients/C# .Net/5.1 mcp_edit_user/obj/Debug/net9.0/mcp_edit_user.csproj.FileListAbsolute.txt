@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\mcp_edit_user.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\mcp_edit_user.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\mcp_edit_user.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\mcp_edit_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\mcp_edit_user.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit.94A30270.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\refint\mcp_edit_user.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\mcp_edit_user.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_edit_user\obj\Debug\net9.0\ref\mcp_edit_user.dll

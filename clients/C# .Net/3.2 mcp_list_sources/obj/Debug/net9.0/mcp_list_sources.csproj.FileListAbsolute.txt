@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\mcp_list_sources.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\mcp_list_sources.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\mcp_list_sources.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\mcp_list_sources.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\mcp_list_sources.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list.A720E197.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\refint\mcp_list_sources.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\mcp_list_sources.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_list_sources\obj\Debug\net9.0\ref\mcp_list_sources.dll

@@ -1,0 +1,13 @@
+{
+    "email": "user@example.com",
+    "password": "********",
+    "groups": ["Gruppe1"],
+    "language": "en",
+    "api_ip": "0.0.0.0",
+    "api_port": "5001",
+    "api_key": "********",
+    "mcp_server": {
+        "host": "172.24.123.123",
+        "port": 5000
+    }
+}

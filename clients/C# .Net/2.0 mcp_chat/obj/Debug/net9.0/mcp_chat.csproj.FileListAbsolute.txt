@@ -1,0 +1,17 @@
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\mcp_chat.exe
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\mcp_chat.deps.json
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\mcp_chat.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\mcp_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\mcp_chat.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.csproj.Up2Date
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\refint\mcp_chat.dll
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.pdb
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\mcp_chat.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\mcp_chat\obj\Debug\net9.0\ref\mcp_chat.dll

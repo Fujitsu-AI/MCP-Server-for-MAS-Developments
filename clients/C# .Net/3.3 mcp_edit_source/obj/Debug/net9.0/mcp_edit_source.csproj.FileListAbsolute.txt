@@ -1,0 +1,34 @@
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.exe
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.deps.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit.7303BE3B.Up2Date
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\refint\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\mcp_edit_source\obj\Debug\net9.0\ref\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.exe
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.deps.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.runtimeconfig.json
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\mcp_edit_source.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\bin\Debug\net9.0\Newtonsoft.Json.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.csproj.AssemblyReference.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.AssemblyInfoInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.AssemblyInfo.cs
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.csproj.CoreCompileInputs.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit.7303BE3B.Up2Date
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\refint\mcp_edit_source.dll
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.pdb
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\mcp_edit_source.genruntimeconfig.cache
+C:\Users\uwuertz\AI\mcp-client\C# .Net\3.3 mcp_edit_source\obj\Debug\net9.0\ref\mcp_edit_source.dll

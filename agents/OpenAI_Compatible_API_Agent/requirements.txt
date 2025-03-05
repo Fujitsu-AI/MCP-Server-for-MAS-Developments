@@ -1,0 +1,6 @@
+openai
+tiktoken
+starlette
+fastapi
+uvicorn
+prometheus_client
