@@ -468,7 +468,7 @@ def generate_logical_sentence(parameters, language_code, config, wait_seconds=5)
         try:
             # Create the prompt from the parameters
             prompt = (
-                "Create a logical sentence from the following JSON parameters:\n" +
+                "Create a meaningful English sentence that integrates the following JSON parameters. Format the date and time according to standard numerical conventions (YYYY-MM-DD HH:MM). Never use spelled-out month or weekday names. Here are the JSON data:" +
                 json.dumps(parameters, ensure_ascii=False, indent=4)
             )
 
