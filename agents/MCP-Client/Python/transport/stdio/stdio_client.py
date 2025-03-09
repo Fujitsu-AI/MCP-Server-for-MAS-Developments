@@ -8,9 +8,9 @@ from contextlib import asynccontextmanager
 import anyio
 from anyio.streams.text import TextReceiveStream
 
-from mcpcli.environment import get_default_environment
-from mcpcli.messages.message_types.json_rpc_message import JSONRPCMessage
-from mcpcli.transport.stdio.stdio_server_parameters import StdioServerParameters
+from ...environment import get_default_environment
+from ...messages.message_types.json_rpc_message import JSONRPCMessage
+from ...transport.stdio.stdio_server_parameters import StdioServerParameters
 
 
 @asynccontextmanager

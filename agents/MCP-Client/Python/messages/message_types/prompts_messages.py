@@ -1,8 +1,8 @@
 # messages/message_types/prompts_messages.py
 from typing import Any, Dict, Optional
-from mcpcli.messages.message_types.incrementing_id_message import IncrementingIDMessage
-from mcpcli.messages.message_types.json_rpc_message import JSONRPCMessage
-from mcpcli.messages.message_types.prompts_models import PromptsGetParams
+from ...messages.message_types.incrementing_id_message import IncrementingIDMessage
+from ...messages.message_types.json_rpc_message import JSONRPCMessage
+from ...messages.message_types.prompts_models import PromptsGetParams
 
 class PromptsListMessage(IncrementingIDMessage):
     def __init__(self, start_id: int = None, **kwargs):
