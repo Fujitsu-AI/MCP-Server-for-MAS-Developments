@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, List
 
 from agents.AgentInterface.Python.agent import PrivateGPTAgent
-from agents.OpenAI_Compatible_API_Agent.Python.pgpt_api import PrivateGPTAPI
+from agents.OpenAI_Compatible_API_Agent.Python.privategpt_api import PrivateGPTAPI
 
 
 class ChatInstance:
