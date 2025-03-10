@@ -3,6 +3,7 @@ import json
 
 import requests
 import urllib3
+from httpcore import NetworkError
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -125,6 +126,22 @@ class PrivateGPTAPI:
             except:
                 print(f"❌ Failed to get response: {e}")
                 return {"error": f"❌ Failed to get response: {e}"}
+
+    def list_personal_groups(self):
+        url = f"{self.base_url}/groups"
+        try:
+            resp = self.session.get(url)
+            print(resp.content)
+            j = json.loads(resp.content)
+            data_block = j["data"]
+            if not data_block:
+                return []
+            personal = data_block.get("personalGroups", [])
+            return personal
+
+        except NetworkError as e:
+            return []
+
 
     def query_private_gpt(self, user_input) -> json:
         """Send a question to the chat and retrieve the response."""

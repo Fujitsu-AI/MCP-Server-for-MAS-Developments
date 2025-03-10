@@ -5,8 +5,10 @@ from datetime import time
 from pathlib import Path
 
 import gradio as gr
+import httpx
 from openai import OpenAI
 
+from agents.AgentInterface.Python.agent import PrivateGPTAgent
 from agents.AgentInterface.Python.config import Config, ConfigError
 from clients.Python.Gradio.Api import PrivateGPTAPI
 
@@ -31,17 +33,19 @@ except ConfigError as e:
 
 
 user_data_source = ["User1", "User2", "User3", "User4", "User5"]
+pgpt = None
 
 # Function to handle login logic
-def login(username, password):
+def login(username, password, selected_options):
     config.set_value("email", username)
     config.set_value("password", password)
     pgpt = PrivateGPTAPI(config)
     if pgpt.login():
         # Successful login
-        return gr.update(visible=False), gr.update(visible=True), ""
+        groups = ["None"] + pgpt.list_personal_groups()
+        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value="None")
     else:
-        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again."
+        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
 
 
 def show_image(img):
@@ -52,6 +56,7 @@ def create_interface():
     with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}") as demo:
         # Login UI Elements
         login_message = gr.Markdown("")
+
         with gr.Group() as login_interface:
             gr.Image(value="./logos/Logo_dark.svg", show_label=False,
                      show_download_button=False,
@@ -60,13 +65,17 @@ def create_interface():
             username_input = gr.Textbox(label="Username")
             password_input = gr.Textbox(label="Password", type="password")
             login_button = gr.Button("Login")
-            local_storage = gr.BrowserState(["", ""])
+
+
+            local_storage = gr.BrowserState(["tobias.baur@fujitsu.com", ""])
             saved_message = gr.Markdown("✅ Saved to local storage", visible=False)
 
         # Dashboard UI Elements
         with gr.Group(visible=False) as dashboard_interface:
             with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}"):
                 with gr.Tab("Chat"):
+
+
                     def predict(message, history):
                         history_openai_format = []
                         for human, assistant in history:
@@ -77,6 +86,7 @@ def create_interface():
                         client = OpenAI(
                             base_url=args.base_url,
                             api_key=args.api_key,
+                            http_client=httpx.Client(verify=False)
                         )
 
                         completion = client.chat.completions.create(
@@ -91,14 +101,21 @@ def create_interface():
                             if len(chunk.choices[0].delta.content) != 0:
                                 partial_message = partial_message + chunk.choices[0].delta.content
                                 yield partial_message
+                    groupslist = gr.Radio(choices=[], label="Groups")
+
+
+
 
                     gr.ChatInterface(predict,
                                      chatbot=gr.Chatbot(height=500, show_label=False),
-                                     textbox=gr.Textbox(placeholder="Ask me a question", container=False, scale=7),
+                                     type='tuples',
+                                     textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "Are tomatoes vegetables?"],
                                      cache_examples=False)
+
+
                 with gr.Tab("Sources"):
                     gr.Markdown("Test function, not working.")
 
@@ -153,8 +170,8 @@ def create_interface():
         # Connect button to function and update components accordingly
         login_button.click(
             fn=login,
-            inputs=[username_input, password_input],
-            outputs=[login_interface, dashboard_interface, login_message]
+            inputs=[username_input, password_input, groupslist],
+            outputs=[login_interface, dashboard_interface, login_message, groupslist]
         )
 
         @demo.load(inputs=[local_storage], outputs=[username_input, password_input])
@@ -172,6 +189,8 @@ def create_interface():
                 f"✅ Saved to local storage",
                 visible=True
             )
+
+
 
     demo.launch()
 
