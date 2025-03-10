@@ -58,16 +58,43 @@ def create_interface():
         login_message = gr.Markdown("")
 
         with gr.Group() as login_interface:
+
+            get_local_storage = """
+                function() {
+                  globalThis.setStorage = (key, value)=>{
+                    localStorage.setItem(key, JSON.stringify(value))
+                  }
+                   globalThis.getStorage = (key, value)=>{
+                    return JSON.parse(localStorage.getItem(key))
+                  }
+                   const username_input =  getStorage('login')
+                   const password_input =  getStorage('password')
+                   return [username_input, password_input];
+                  }
+                """
+
+
             gr.Image(value="./logos/Logo_dark.svg", show_label=False,
                      show_download_button=False,
                      show_fullscreen_button=False, height=200)
 
             username_input = gr.Textbox(label="Username")
+            username_input.change(None, username_input, None, js="(v)=>{ setStorage('login',v) }")
             password_input = gr.Textbox(label="Password", type="password")
+            password_input.change(None, password_input, None, js="(v)=>{ setStorage('password',v) }")
+
             login_button = gr.Button("Login")
 
+            #local_data = gr.JSON({}, label="Local Storage")
+            with gr.Blocks() as block:
+                block.load(
+                    None,
+                    inputs=None,
+                    outputs=[username_input, password_input],
+                    js=get_local_storage,
+                )
 
-            local_storage = gr.BrowserState(["tobias.baur@fujitsu.com", ""])
+
             saved_message = gr.Markdown("✅ Saved to local storage", visible=False)
 
         # Dashboard UI Elements
@@ -163,10 +190,6 @@ def create_interface():
                         # Connect button click to update function, modifying the choices in CheckboxGroup
                         remove_button.click(fn=update_options, inputs=checkbox, outputs=checkbox)
 
-
-
-
-
         # Connect button to function and update components accordingly
         login_button.click(
             fn=login,
@@ -174,21 +197,6 @@ def create_interface():
             outputs=[login_interface, dashboard_interface, login_message, groupslist]
         )
 
-        @demo.load(inputs=[local_storage], outputs=[username_input, password_input])
-        def load_from_local_storage(saved_values):
-            print("loading from local storage", saved_values)
-            return saved_values[0], saved_values[1]
-
-        @gr.on([username_input.change, password_input.change], inputs=[username_input, password_input], outputs=local_storage)
-        def save_to_local_storage(username, password):
-            return [username, password]
-
-        @gr.on(local_storage.change, outputs=saved_message)
-        def show_saved_message():
-            return gr.Markdown(
-                f"✅ Saved to local storage",
-                visible=True
-            )
 
 
 
