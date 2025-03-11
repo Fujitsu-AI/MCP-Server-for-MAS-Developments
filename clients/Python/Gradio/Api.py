@@ -46,7 +46,7 @@ class PrivateGPTAPI:
         if self.access_header == "":
             self.access_header = None
 
-        self.chosen_groups = config.data["groups"] or []
+        self.chosen_groups = config.get("groups", [])
         self.language = config.get("language", "en")
         self.use_public = config.get("use_public", True)
         self.whitelist_keys = config.get("whitelist_keys", [])

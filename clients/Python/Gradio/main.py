@@ -15,10 +15,10 @@ from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Python.Gradio.Api import PrivateGPTAPI
 
-parser = argparse.ArgumentParser(description="Provide an API key to connect to OpenAI-compatible API.")
-parser.add_argument("--api_key", required=True, help="API key for login")
-parser.add_argument("--base_url", required=True, help="The base url of the VLLM server")
-args = parser.parse_args()
+#parser = argparse.ArgumentParser(description="Provide an API key to connect to OpenAI-compatible API.")
+#parser.add_argument("--api_key", required=True, help="API key for login")
+#parser.add_argument("--base_url", required=True, help="The base url of the VLLM server")
+#args = parser.parse_args()
 
 
 # Dummy credentials for demonstration purposes
@@ -30,6 +30,8 @@ try:
     config_file = Path.absolute(Path(__file__).parent / "config.json")
     config = Config(config_file=config_file, required_fields=["base_url"])
     default_groups = config.get("groups", [])
+    vllm_url =  config.get("vllm_url", "")
+    vllm_api_key = config.get("vllm_api_key", "")
 except ConfigError as e:
     print(f"Configuration Error: {e}")
     exit(1)
@@ -125,8 +127,8 @@ def create_interface():
                             # If we don't use a group, we use vllm directly.
 
                             client = OpenAI(
-                                base_url=args.base_url,
-                                api_key=args.api_key,
+                                base_url=vllm_url,
+                                api_key=vllm_api_key,
                                 http_client=httpx.Client(verify=False)
                             )
 
@@ -143,7 +145,8 @@ def create_interface():
                                     yield partial_message
 
                         else:
-
+                            config.set_value("groups", [selected_group])
+                            pgpt = PrivateGPTAPI(config)
                             # otherwise we use the api code to use the rag.
                             response = pgpt.respond_with_context(history_openai_format)
                             print(response)
@@ -170,7 +173,7 @@ def create_interface():
                                 }
 
 
-                                partial_message = partial_message + json.dumps(chunk)
+                                partial_message = partial_message + token + " "
                                 asyncio.run(asyncio.sleep(0.05))
                                 yield partial_message
 
