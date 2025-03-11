@@ -39,7 +39,7 @@ except ConfigError as e:
 
 user_data_source = ["User1", "User2", "User3", "User4", "User5"]
 pgpt = None
-selected_group = "None"
+selected_groups = []
 
 # Function to handle login logic
 def login(username, password, selected_options):
@@ -49,9 +49,9 @@ def login(username, password, selected_options):
     pgpt = PrivateGPTAPI(config)
     if pgpt.login():
         # Successful login
-        groups = ["None"] + pgpt.list_personal_groups()
+        groups = pgpt.list_personal_groups()
 
-        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value="None")
+        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value=None)
     else:
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
 
@@ -112,7 +112,7 @@ def create_interface():
 
 
                     def predict(message, history):
-                        global  selected_group
+                        global selected_groups
 
 
 
@@ -123,7 +123,7 @@ def create_interface():
                             history_openai_format.append({"role": "assistant", "content": assistant})
                         history_openai_format.append({"role": "user", "content": message})
 
-                        if selected_group == "None":
+                        if len(selected_groups) == 0:
                             # If we don't use a group, we use vllm directly.
 
                             client = OpenAI(
@@ -145,7 +145,7 @@ def create_interface():
                                     yield partial_message
 
                         else:
-                            config.set_value("groups", [selected_group])
+                            config.set_value("groups", selected_groups)
                             pgpt = PrivateGPTAPI(config)
                             # otherwise we use the api code to use the rag.
                             response = pgpt.respond_with_context(history_openai_format)
@@ -186,10 +186,10 @@ def create_interface():
 
 
                     def change_group(selected_item):
-                        global selected_group
-                        selected_group = selected_item
+                        global selected_groups
+                        selected_groups = selected_item
 
-                    groupslist = gr.Radio(choices=[], label="Groups")
+                    groupslist = gr.CheckboxGroup(choices=[], label="Groups")
                     groupslist.change(change_group, groupslist, None)
 
 
