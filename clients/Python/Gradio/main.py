@@ -47,7 +47,7 @@ def login(username, password, selected_options):
     config.set_value("email", username)
     config.set_value("password", password)
     pgpt = PrivateGPTAPI(config)
-    if pgpt.login():
+    if pgpt.logged_in:
         # Successful login
         groups = pgpt.list_personal_groups()
 
