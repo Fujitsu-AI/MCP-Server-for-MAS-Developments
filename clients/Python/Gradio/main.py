@@ -1,13 +1,18 @@
 import argparse
+import asyncio
+import json
 import os
 import shutil
-from datetime import time
+import time
 from pathlib import Path
 
 import gradio as gr
+import httpx
 from openai import OpenAI
 
+from agents.AgentInterface.Python.agent import PrivateGPTAgent
 from agents.AgentInterface.Python.config import Config, ConfigError
+from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Python.Gradio.Api import PrivateGPTAPI
 
 parser = argparse.ArgumentParser(description="Provide an API key to connect to OpenAI-compatible API.")
@@ -31,17 +36,22 @@ except ConfigError as e:
 
 
 user_data_source = ["User1", "User2", "User3", "User4", "User5"]
+pgpt = None
+selected_group = "None"
 
 # Function to handle login logic
-def login(username, password):
+def login(username, password, selected_options):
+    global pgpt
     config.set_value("email", username)
     config.set_value("password", password)
     pgpt = PrivateGPTAPI(config)
     if pgpt.login():
         # Successful login
-        return gr.update(visible=False), gr.update(visible=True), ""
+        groups = ["None"] + pgpt.list_personal_groups()
+
+        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value="None")
     else:
-        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again."
+        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
 
 
 def show_image(img):
@@ -52,53 +62,144 @@ def create_interface():
     with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}") as demo:
         # Login UI Elements
         login_message = gr.Markdown("")
+
         with gr.Group() as login_interface:
+
+            get_local_storage = """
+                function() {
+                  globalThis.setStorage = (key, value)=>{
+                    localStorage.setItem(key, JSON.stringify(value))
+                  }
+                   globalThis.getStorage = (key, value)=>{
+                    return JSON.parse(localStorage.getItem(key))
+                  }
+                   const username_input =  getStorage('login')
+                   const password_input =  getStorage('password')
+                   return [username_input, password_input];
+                  }
+                """
+
+
             gr.Image(value="./logos/Logo_dark.svg", show_label=False,
                      show_download_button=False,
                      show_fullscreen_button=False, height=200)
 
             username_input = gr.Textbox(label="Username")
+            username_input.change(None, username_input, None, js="(v)=>{ setStorage('login',v) }")
             password_input = gr.Textbox(label="Password", type="password")
+            password_input.change(None, password_input, None, js="(v)=>{ setStorage('password',v) }")
+
             login_button = gr.Button("Login")
-            local_storage = gr.BrowserState(["", ""])
+
+            #local_data = gr.JSON({}, label="Local Storage")
+            with gr.Blocks() as block:
+                block.load(
+                    None,
+                    inputs=None,
+                    outputs=[username_input, password_input],
+                    js=get_local_storage,
+                )
+
+
             saved_message = gr.Markdown("✅ Saved to local storage", visible=False)
 
         # Dashboard UI Elements
         with gr.Group(visible=False) as dashboard_interface:
             with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}"):
                 with gr.Tab("Chat"):
+
+
                     def predict(message, history):
+                        global  selected_group
+
+
+
+
                         history_openai_format = []
                         for human, assistant in history:
                             history_openai_format.append({"role": "user", "content": human})
                             history_openai_format.append({"role": "assistant", "content": assistant})
                         history_openai_format.append({"role": "user", "content": message})
 
-                        client = OpenAI(
-                            base_url=args.base_url,
-                            api_key=args.api_key,
-                        )
+                        if selected_group == "None":
+                            # If we don't use a group, we use vllm directly.
 
-                        completion = client.chat.completions.create(
-                            model="/models/mistral-nemo-12b",
-                            messages=history_openai_format,
-                            temperature=1.0,
-                            stream=True
-                        )
+                            client = OpenAI(
+                                base_url=args.base_url,
+                                api_key=args.api_key,
+                                http_client=httpx.Client(verify=False)
+                            )
 
-                        partial_message = ""
-                        for chunk in completion:
-                            if len(chunk.choices[0].delta.content) != 0:
-                                partial_message = partial_message + chunk.choices[0].delta.content
+                            completion = client.chat.completions.create(
+                                model="/models/mistral-nemo-12b",
+                                messages=history_openai_format,
+                                temperature=1.0,
+                                stream=True
+                            )
+                            partial_message = ""
+                            for chunk in completion:
+                                if len(chunk.choices[0].delta.content) != 0:
+                                    partial_message = partial_message + chunk.choices[0].delta.content
+                                    yield partial_message
+
+                        else:
+
+                            # otherwise we use the api code to use the rag.
+                            response = pgpt.respond_with_context(history_openai_format)
+                            print(response)
+                            user_input = ""
+                            for message in history_openai_format:
+                                user_input += json.dumps(message)
+
+                            num_tokens_request, num_tokens_reply, num_tokens_overall = num_tokens(user_input,response["answer"])
+
+                            tokens = response["answer"].split(" ")
+                            partial_message = ""
+                            for i, token in enumerate(tokens):
+                                chunk = {
+                                    "id": i,
+                                    "object": "chat.completion.chunk",
+                                    "created": time.time(),
+                                    "model": "/models/mistral-nemo-12b",
+                                    "choices": [{"delta": {"content": token + " "}}],
+                                    "usage": {
+                                        "prompt_tokens": num_tokens_request,
+                                        "completion_tokens": num_tokens_reply,
+                                        "total_tokens": num_tokens_overall
+                                    }
+                                }
+
+
+                                partial_message = partial_message + json.dumps(chunk)
+                                asyncio.run(asyncio.sleep(0.05))
                                 yield partial_message
+
+                            yield response["answer"]
+
+
+                            #yield "data: [DONE]\n\n"
+
+
+
+
+                    def change_group(selected_item):
+                        global selected_group
+                        selected_group = selected_item
+
+                    groupslist = gr.Radio(choices=[], label="Groups")
+                    groupslist.change(change_group, groupslist, None)
+
 
                     gr.ChatInterface(predict,
                                      chatbot=gr.Chatbot(height=500, show_label=False),
-                                     textbox=gr.Textbox(placeholder="Ask me a question", container=False, scale=7),
+                                     type='tuples',
+                                     textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "Are tomatoes vegetables?"],
                                      cache_examples=False)
+
+
                 with gr.Tab("Sources"):
                     gr.Markdown("Test function, not working.")
 
@@ -146,32 +247,13 @@ def create_interface():
                         # Connect button click to update function, modifying the choices in CheckboxGroup
                         remove_button.click(fn=update_options, inputs=checkbox, outputs=checkbox)
 
-
-
-
-
         # Connect button to function and update components accordingly
         login_button.click(
             fn=login,
-            inputs=[username_input, password_input],
-            outputs=[login_interface, dashboard_interface, login_message]
+            inputs=[username_input, password_input, groupslist],
+            outputs=[login_interface, dashboard_interface, login_message, groupslist]
         )
 
-        @demo.load(inputs=[local_storage], outputs=[username_input, password_input])
-        def load_from_local_storage(saved_values):
-            print("loading from local storage", saved_values)
-            return saved_values[0], saved_values[1]
-
-        @gr.on([username_input.change, password_input.change], inputs=[username_input, password_input], outputs=local_storage)
-        def save_to_local_storage(username, password):
-            return [username, password]
-
-        @gr.on(local_storage.change, outputs=saved_message)
-        def show_saved_message():
-            return gr.Markdown(
-                f"✅ Saved to local storage",
-                visible=True
-            )
 
     demo.launch()
 

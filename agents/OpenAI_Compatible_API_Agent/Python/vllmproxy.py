@@ -11,7 +11,8 @@ from starlette.responses import StreamingResponse
 from fastapi import FastAPI, Request, HTTPException
 from threading import local
 
-from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import ChatCompletionRequest, models, Message, num_tokens
+from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import ChatCompletionRequest, models, Message, num_tokens, \
+    CompletionRequest
 import uvicorn
 
 
@@ -62,7 +63,7 @@ async def chat_completions(request: ChatCompletionRequest):
     response = client.chat.completions.create(
         model="/models/mistral-nemo-12b",
         temperature=request.temperature,
-        top_p=request.top_p,
+        #top_p=float(request.top_p),
         stream=True,
         tools=tools or None,
         messages=msgs
@@ -88,7 +89,6 @@ async def chat_completions(request: ChatCompletionRequest):
                 "total_tokens": 20
             }
         }
-
 
 async def _resp_async_generator_vllm(response, request):
     partial_message = ""
@@ -137,7 +137,7 @@ async def get_model(model_id: str):
 
 if __name__ == "__main__":
     api_ip = "0.0.0.0"
-    api_port = 8002
+    api_port = 8003
     uvicorn.run(app, host=api_ip, port=int(api_port))
 
 

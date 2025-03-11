@@ -1,6 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, Field
-from mcpcli.messages.message_types.json_rpc_message import JSONRPCMessage
+from ...messages.message_types.json_rpc_message import JSONRPCMessage
 
 
 class MCPClientCapabilities(BaseModel):

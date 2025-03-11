@@ -8,7 +8,7 @@ from threading import local
 
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import ChatInstance, \
     ChatCompletionRequest, CompletionRequest, _resp_sync, _resp_async_generator, models, Message, _resp_async_generator_completions, _resp_sync_completions
-from .pgpt_api import PrivateGPTAPI
+from .privategpt_api import PrivateGPTAPI
 
 from ...AgentInterface.Python.config import Config, ConfigError
 import uvicorn
@@ -167,7 +167,7 @@ async def get_model(model_id: str):
 
 if __name__ == "__main__":
     api_ip = config.get("api_ip", "0.0.0.0")
-    api_port = config.get("api_port", 8002)
+    api_port = config.get("api_port", 8001)
     uvicorn.run(app, host=api_ip, port=int(api_port))
 
 

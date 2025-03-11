@@ -1,5 +1,5 @@
 # messages/message_types/ping_message.py
-from mcpcli.messages.message_types.incrementing_id_message import IncrementingIDMessage
+from ...messages.message_types.incrementing_id_message import IncrementingIDMessage
 
 class PingMessage(IncrementingIDMessage):
     def __init__(self, start_id: int = None, **kwargs):

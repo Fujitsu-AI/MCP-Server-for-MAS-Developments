@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import requests
@@ -7,7 +8,7 @@ import base64
 
 from httpcore import NetworkError
 
-from .config import Config
+from ...AgentInterface.Python.config import Config
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -23,8 +24,8 @@ def initialize_session(proxy_user, proxy_password, access_header):
     if access_header is not None:
         headers['X-Custom-Header'] = access_header
     elif proxy_user is not None and proxy_password is not None:
-        auth = base64.b64encode(f"{proxy_user}:{proxy_password}".encode()).decode()
-        headers['Authorization'] = f'Basic {auth}'
+            auth = base64.b64encode(f"{proxy_user}:{proxy_password}".encode()).decode()
+            headers['Authorization'] = f'Basic {auth}'
     session.headers.update(headers)
     return session
 
@@ -52,18 +53,17 @@ class PrivateGPTAPI:
         self.whitelist_keys = config.get("whitelist_keys", [])
         self.logged_in = False
 
+
         if client_api_key is not None:
             self.email, self.password = decrypt_api_key(client_api_key)
             if len(self.whitelist_keys) > 0:
                 if client_api_key not in self.whitelist_keys:
                     print("not authorized")
-        else:
-            self.email =  config.get("email", None)
-            self.password =  config.get("password", None)
 
         self.session = initialize_session(self.proxy_user, self.proxy_password, self.access_header)
         if self.login():
             self.logged_in = True
+
 
     def login(self):
         """Authenticate the user and retrieve the token."""
@@ -75,7 +75,7 @@ class PrivateGPTAPI:
             response.raise_for_status()
             data = response.json()
             self.token = data['data']['token']
-
+            
             # Prüfen, ob der Header bereits existiert
             if 'Authorization' in self.session.headers:
                 self.session.headers['Authorization'] += f', Bearer {self.token}'
@@ -142,14 +142,15 @@ class PrivateGPTAPI:
         url = f"{self.base_url}/groups"
         try:
             resp = self.session.get(url)
-            j = json.loads(resp.content)
-            data_block = j["data"]
+            data_block = resp.content.get("data")
             if not data_block:
                 return []
 
-            personal = data_block.get("personalGroups", [])
-            return personal
-
+            if data_block.get("status") == 200 and data_block.get("message") == "success":
+                personal = data_block.get("personalGroups", [])
+                return personal
+            else:
+                return []
         except NetworkError as e:
             return []
 
@@ -162,27 +163,27 @@ class PrivateGPTAPI:
         payload = {"question": user_input}
         try:
             response = self.session.patch(url, json=payload)
-            # response.raise_for_status()
+            #response.raise_for_status()
             resp = response.json()
             try:
                 answer = resp.get('data', None).get('answer', "error")
             except:
                 print(response.json())
-                resp = {"data":
-                            {"answer": "error"}
+                resp = {"data" :
+                        {"answer": "error"}
                         }
                 answer = "error"
 
             if answer.startswith("{\"role\":"):
-                answerj = json.loads(answer)
-                resp["data"]["answer"] = answerj["content"]
-                resp["data"]["chatId"] = "0"
+                 answerj = json.loads(answer)
+                 resp["data"]["answer"] = answerj["content"]
+                 resp["data"]["chatId"] = "0"
 
             print(f"💡 Response: {answer}")
             return resp
         except requests.exceptions.RequestException as e:
             # It seems we get disconnections from time to time..
-            # print(f"⚠️ Failed to get response on first try, trying again..: {e}")
+            #print(f"⚠️ Failed to get response on first try, trying again..: {e}")
             try:
                 response = self.session.patch(url, json=payload)
                 response.raise_for_status()
@@ -193,6 +194,7 @@ class PrivateGPTAPI:
             except:
                 print(f"❌ Failed to get response: {e}")
                 return {"error": f"❌ Failed to get response: {e}"}
+
 
     def get_document_info(self, source_id):
         """Send a source id to retrieve details. Working with version 1.3.3 and newer"""
@@ -207,26 +209,27 @@ class PrivateGPTAPI:
             print(f"❌ Failed to get response: {e}")
             return {"error": f"❌ Failed to get response: {e}"}
 
+
     def respond_with_context(self, messages, response_format=None, request_tools=None):
-        last_user_message = next((p for p in reversed(messages) if p["role"] == "user"), None)
+        last_user_message = next((p for p in reversed(messages) if p.role == "user"), None)
         user_input = ""
 
+
         for message in messages:
-            if message["role"] == "system":
+            if message.role == "system":
                 user_input = str(message) + "\n"
 
         if last_user_message is not None:
-            user_input += last_user_message["content"]
+            user_input += last_user_message.content
 
-        last_assistant_message = next((p for p in reversed(messages) if p["role"] == "assistant"), None)
-        last_tool_message = next((p for p in reversed(messages) if p["role"] == "tool"), None)
+        last_assistant_message = next((p for p in reversed(messages) if p.role == "assistant"), None)
+        last_tool_message = next((p for p in reversed(messages) if p.role == "tool"), None)
 
         hastoolresult = False
-        if last_tool_message is not None and last_assistant_message is not None and last_assistant_message.tool_calls is not None and len(
-                last_assistant_message.tool_calls) > 0:
-            user_input += "\nYou called the tool: " + str(
-                last_assistant_message.tool_calls[0]) + ". The result was: " + last_tool_message.content
+        if last_tool_message is not None and last_assistant_message is not None and last_assistant_message.tool_calls is not None and len(last_assistant_message.tool_calls) > 0:
+            user_input += "\nYou called the tool: " + str(last_assistant_message.tool_calls[0]) + ". The result was: " + last_tool_message.content
             hastoolresult = True
+
 
         print(f"💁 Request: " + user_input)
 
@@ -255,8 +258,7 @@ class PrivateGPTAPI:
 
             if 'data' in result:
                 response_data = result.get("data")
-                if request_tools is not None and not hastoolresult and is_json(
-                        clean_response(response_data.get("answer"))):
+                if request_tools is not None and not hastoolresult and is_json(clean_response(response_data.get("answer"))):
                     response_data["tool_call"] = clean_response(response_data.get("answer", ""))
                 return response_data
             elif 'error' in result:
@@ -275,23 +277,22 @@ class PrivateGPTAPI:
             else:
                 return result
 
-
 def is_json(myjson):
-    try:
-        json.loads(myjson)
-    except ValueError as e:
-        return False
-    return True
-
+  try:
+    json.loads(myjson)
+  except ValueError as e:
+    return False
+  return True
 
 def add_response_format(response_format):
-    # prompt = "\nPlease fill in the following template with realistic and appropriate information. Be creative. The field 'type' defines the output format. In your reply, only return the generated json\n"
+    #prompt = "\nPlease fill in the following template with realistic and appropriate information. Be creative. The field 'type' defines the output format. In your reply, only return the generated json\n"
     prompt = "\nPlease fill in the following json template with realistic and appropriate information. In your reply, only return the generated json. If you can't answer return an empty json.\n"
     prompt += json.dumps(response_format)
     return prompt
 
 
 def add_tools(response_tools, last_tool_message):
+
     prompt = "\nPlease select the fitting provided tool to create your answer. Only return the generated result of the tool. Do not describe what you are doing, just return the json.\n"
     index = 1
     for tool in response_tools:
@@ -300,12 +301,10 @@ def add_tools(response_tools, last_tool_message):
 
     return prompt
 
-
 def clean_response(response):
     # Remove artefacts from reply here
     response = response.replace("[TOOL_CALLS]", "")
     return response
-
 
 def decrypt_api_key(api_key):
     """
@@ -335,7 +334,7 @@ def main():
             if question.lower() == 'quit':
                 break
             if question:
-                chat.query_private_gpt(question)
+                 chat.query_private_gpt(question)
         except KeyboardInterrupt:
             print("\nExiting chat...")
             break

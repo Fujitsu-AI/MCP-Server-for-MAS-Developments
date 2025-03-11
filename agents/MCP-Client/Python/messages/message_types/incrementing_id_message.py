@@ -1,6 +1,6 @@
 # messages/message_types/incrementing_id_message.py
 from typing import ClassVar
-from mcpcli.messages.message_types.json_rpc_message import JSONRPCMessage
+from ...messages.message_types.json_rpc_message import JSONRPCMessage
 
 class IncrementingIDMessage(JSONRPCMessage):
     counter: ClassVar[int] = 0

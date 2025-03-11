@@ -1,6 +1,7 @@
 import argparse
 import json
 
+import httpx
 from openai import OpenAI
 from pydantic import BaseModel
 from enum import Enum
@@ -38,6 +39,7 @@ if __name__ == "__main__":
     client = OpenAI(
         base_url=args.base_url,
         api_key=args.api_key,
+        http_client=httpx.Client(verify=False)
     )
 
 

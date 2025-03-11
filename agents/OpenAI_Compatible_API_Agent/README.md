@@ -2,7 +2,7 @@
 
 ## Description
 The PrivateGPT OpenAI-Compatible API Agent is a client that communicates with a private GPT server and provides an interface to openai-compatible libraries and tools.
-It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGPT API directly, Variation 2 (*openai_mcp_api.py*) uses communicates through the PGPT MCP Server.
+It comes in two variations. Variation 1 (*openai_compatible_api.py*) uses the PrivateGPT API directly, Variation 2 (*openai_mcp_api.py*) uses communicates through the PrivateGPT MCP Server.
 
 ---
 
@@ -16,7 +16,7 @@ It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGP
 ## Setup
 1. **Clone the repository:**
     ```bash
-    git clone [https://github.com/pgpt-dev/MCP-Server-for-MAS-Developments.git](https://github.com/pgpt-dev/MCP-Server-for-MAS-Developments.git)
+    git clone [https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git](https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git)
     cd MCP-Server-for-MAS-Developments
     ```
 
@@ -42,7 +42,7 @@ It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGP
 
 4. **Customise configuration file:**
 
-   - 4.1 **OpenAI-Compatible API via PGPT API:**
+   - 4.1 **OpenAI-Compatible API via PrivateGPT API:**
 
        Copy the `pgpt_api_proxy.json.example` file to `pgpt_api_proxy.json` e.g. with  `cp  .\agents\OpenAI_Compatible_API_Agent\pgpt_api_proxy.json.example  .\agents\OpenAI_Compatible_API_Agent\pgpt_api_proxy.json`
        Make sure that the `pgpt_api_proxy.json` is configured correctly and contains all necessary fields. The file should look like this:
@@ -66,15 +66,15 @@ It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGP
        Make sure that the `pgpt_openai_api_mcp.json` is configured correctly and contains all necessary fields. The file should look like this:
        ```json
         {
-            "email": "<Your PGPT account>",
-            "password": "<Your PGPT password>",
+            "email": "<Your PrivateGPT account>",
+            "password": "<Your PrivateGPT password>",
             "groups": ["<Groups to access>"],
             "language": "en",
             "api_ip": "0.0.0.0",
             "api_port": 8002,
             "whitelist_keys": [],
             "mcp_server": {
-                "host": "172.24.123.123",
+                "host": "127.0.0.1",
                 "port": 5000
             }
         }
@@ -82,7 +82,7 @@ It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGP
 
     
 5. **Start the AI agents:**
-   - 5.1 **Start the OpenAI-compatible API agent that uses the PGPT API directly:**
+   - 5.1 **Start the OpenAI-compatible API agent that uses the PrivateGPT API directly:**
      ```bash
      python -m agents.OpenAI_Compatible_API_Agent.Python.openai_compatible_api
      ```
@@ -110,13 +110,13 @@ It comes in two variations. Variation 1 (*openai_compatible_api.p*) uses the PGP
 6. **Generate API key**
     Generate a key with the following command:
     ```bash
-     python -m agents.OpenAI_Compatible_API_Agent.Python.generate_api_key --email "<PGPT account>" --password "<PGPT Password>"
+     python -m agents.OpenAI_Compatible_API_Agent.Python.generate_api_key --email "<PrivateGPT account>" --password "<PrivateGPT Password>"
      ```
     This API key can be used for OpenAI compatible Clients. Make sure you either enter it to the config under whitelist_keys (see 4.1 and 4.2) or whitelist_keys is empty (no check, but prone to errors)
 ---
 
 ## Utilisation
-- **Use libraries (like litellm, ollama, smolagents) or tools (like Msty) to use PGPT with the OpenAI API interface:**
+- **Use libraries (like litellm, ollama, smolagents) or tools (like Msty) to use PrivateGPT with the OpenAI API interface:**
   
 Some example usages for external tools:
 
@@ -127,8 +127,8 @@ Some example usages for external tools:
   -   To use the API in Continue (Visual Studio/Pycharm Plugin) add this to your config:
 ```json
   {
-      "model": "pgpt",
-      "title": "PGPT",
+      "model": "privategpt",
+      "title": "PrivateGPT",
       "systemMessage": "You are an expert software developer. You give helpful and concise responses.",
       "apiKey": "<your-api-key>",
       "apiBase": "http://<ip:port>",

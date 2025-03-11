@@ -4,7 +4,7 @@ import anyio
 from typing import Optional
 from anyio.streams.memory import MemoryObjectReceiveStream, MemoryObjectSendStream
 
-from mcpcli.messages.message_types.initialize_message import (
+from ..messages.message_types.initialize_message import (
     InitializeMessage,
     InitializedNotificationMessage,
     InitializeParams,
