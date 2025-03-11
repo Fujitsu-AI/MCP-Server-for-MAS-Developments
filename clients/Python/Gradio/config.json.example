@@ -3,7 +3,8 @@
     "proxy_user": "",
     "proxy_password": "",
 	"access_header": "",
-    "groups": [],
+    "vllm_url": "",
+    "vllm_api_key": "",
     "language": "en",
     "use_public": true
 }
