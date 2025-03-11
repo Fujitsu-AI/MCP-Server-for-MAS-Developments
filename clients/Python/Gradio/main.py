@@ -1,7 +1,9 @@
 import argparse
+import asyncio
+import json
 import os
 import shutil
-from datetime import time
+import time
 from pathlib import Path
 
 import gradio as gr
@@ -10,6 +12,7 @@ from openai import OpenAI
 
 from agents.AgentInterface.Python.agent import PrivateGPTAgent
 from agents.AgentInterface.Python.config import Config, ConfigError
+from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Python.Gradio.Api import PrivateGPTAPI
 
 parser = argparse.ArgumentParser(description="Provide an API key to connect to OpenAI-compatible API.")
@@ -34,15 +37,18 @@ except ConfigError as e:
 
 user_data_source = ["User1", "User2", "User3", "User4", "User5"]
 pgpt = None
+selected_group = "None"
 
 # Function to handle login logic
 def login(username, password, selected_options):
+    global pgpt
     config.set_value("email", username)
     config.set_value("password", password)
     pgpt = PrivateGPTAPI(config)
     if pgpt.login():
         # Successful login
         groups = ["None"] + pgpt.list_personal_groups()
+
         return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value="None")
     else:
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
@@ -104,33 +110,84 @@ def create_interface():
 
 
                     def predict(message, history):
+                        global  selected_group
+
+
+
+
                         history_openai_format = []
                         for human, assistant in history:
                             history_openai_format.append({"role": "user", "content": human})
                             history_openai_format.append({"role": "assistant", "content": assistant})
                         history_openai_format.append({"role": "user", "content": message})
 
-                        client = OpenAI(
-                            base_url=args.base_url,
-                            api_key=args.api_key,
-                            http_client=httpx.Client(verify=False)
-                        )
+                        if selected_group == "None":
+                            # If we don't use a group, we use vllm directly.
 
-                        completion = client.chat.completions.create(
-                            model="/models/mistral-nemo-12b",
-                            messages=history_openai_format,
-                            temperature=1.0,
-                            stream=True
-                        )
+                            client = OpenAI(
+                                base_url=args.base_url,
+                                api_key=args.api_key,
+                                http_client=httpx.Client(verify=False)
+                            )
 
-                        partial_message = ""
-                        for chunk in completion:
-                            if len(chunk.choices[0].delta.content) != 0:
-                                partial_message = partial_message + chunk.choices[0].delta.content
+                            completion = client.chat.completions.create(
+                                model="/models/mistral-nemo-12b",
+                                messages=history_openai_format,
+                                temperature=1.0,
+                                stream=True
+                            )
+                            partial_message = ""
+                            for chunk in completion:
+                                if len(chunk.choices[0].delta.content) != 0:
+                                    partial_message = partial_message + chunk.choices[0].delta.content
+                                    yield partial_message
+
+                        else:
+
+                            # otherwise we use the api code to use the rag.
+                            response = pgpt.respond_with_context(history_openai_format)
+                            print(response)
+                            user_input = ""
+                            for message in history_openai_format:
+                                user_input += json.dumps(message)
+
+                            num_tokens_request, num_tokens_reply, num_tokens_overall = num_tokens(user_input,response["answer"])
+
+                            tokens = response["answer"].split(" ")
+                            partial_message = ""
+                            for i, token in enumerate(tokens):
+                                chunk = {
+                                    "id": i,
+                                    "object": "chat.completion.chunk",
+                                    "created": time.time(),
+                                    "model": "/models/mistral-nemo-12b",
+                                    "choices": [{"delta": {"content": token + " "}}],
+                                    "usage": {
+                                        "prompt_tokens": num_tokens_request,
+                                        "completion_tokens": num_tokens_reply,
+                                        "total_tokens": num_tokens_overall
+                                    }
+                                }
+
+
+                                partial_message = partial_message + json.dumps(chunk)
+                                asyncio.run(asyncio.sleep(0.05))
                                 yield partial_message
+
+                            yield response["answer"]
+
+
+                            #yield "data: [DONE]\n\n"
+
+
+
+
+                    def change_group(selected_item):
+                        global selected_group
+                        selected_group = selected_item
+
                     groupslist = gr.Radio(choices=[], label="Groups")
-
-
+                    groupslist.change(change_group, groupslist, None)
 
 
                     gr.ChatInterface(predict,
@@ -196,8 +253,6 @@ def create_interface():
             inputs=[username_input, password_input, groupslist],
             outputs=[login_interface, dashboard_interface, login_message, groupslist]
         )
-
-
 
 
     demo.launch()
