@@ -82,7 +82,7 @@ def create_interface():
                 """
 
 
-            gr.Image(value="./logos/Logo_dark.svg", show_label=False,
+            gr.Image(value="./clients/Gradio/logos/Logo_dark.svg", show_label=False,
                      show_download_button=False,
                      show_fullscreen_button=False, height=200)
 
