@@ -13,7 +13,7 @@ from openai import OpenAI
 from agents.AgentInterface.Python.agent import PrivateGPTAgent
 from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
-from clients.Python.Gradio.Api import PrivateGPTAPI
+from clients.Gradio.Api import PrivateGPTAPI
 
 #parser = argparse.ArgumentParser(description="Provide an API key to connect to OpenAI-compatible API.")
 #parser.add_argument("--api_key", required=True, help="API key for login")
@@ -203,52 +203,52 @@ def create_interface():
                                      cache_examples=False)
 
 
-                with gr.Tab("Sources"):
-                    gr.Markdown("Test function, not working.")
+                #with gr.Tab("Sources"):
+                #    gr.Markdown("Test function, not working.")
 
-                    def upload_file(file):
-                        UPLOAD_FOLDER = "./data"
-                        if not os.path.exists(UPLOAD_FOLDER):
-                            os.mkdir(UPLOAD_FOLDER)
-                        shutil.copy(file, UPLOAD_FOLDER)
-                        gr.Info("File Uploaded!!!")
+                #    def upload_file(file):
+                #        UPLOAD_FOLDER = "./data"
+                #        if not os.path.exists(UPLOAD_FOLDER):
+                #            os.mkdir(UPLOAD_FOLDER)
+                #        shutil.copy(file, UPLOAD_FOLDER)
+                #        gr.Info("File Uploaded!!!")
 
-                    upload_button = gr.UploadButton("Click to Upload a File")
-                    upload_button.upload(upload_file, upload_button)
+                #    upload_button = gr.UploadButton("Click to Upload a File")
+                #    upload_button.upload(upload_file, upload_button)
 
-                with gr.Tab("Users"):
+                #with gr.Tab("Users"):
                     # Initial data source
-                    gr.Markdown("Test function, not working.")
+                #    gr.Markdown("Test function, not working.")
                     # TODO Api.. how do we get users?
 
                     # Function to remove selected option from the dropdown
-                    def remove_option(selected_option, options):
-                        if selected_option in options:
-                            options.remove(selected_option)
-                        return options, gr.update(choices=options, value=None)  # Reset selection
+                #    def remove_option(selected_option, options):
+                #        if selected_option in options:
+                #            options.remove(selected_option)
+                #        return options, gr.update(choices=options, value=None)  # Reset selection
 
                     # Function to update the options by removing the selected ones
-                    def update_options(selected_options):
-                        global user_data_source
-                        # Filter out selected options
-                        user_data_source = [option for option in user_data_source if option not in selected_options]
-                        # TODO delete others from db
-                        for element in selected_options:
-                            print("todo: delete from db")
-                        selected_options = []
+               #     def update_options(selected_options):
+               #         global user_data_source
+               #         # Filter out selected options
+               #         user_data_source = [option for option in user_data_source if option not in selected_options]
+               #         # TODO delete others from db
+               #        for element in selected_options:
+               #             print("todo: delete from db")
+               #         selected_options = []
 
-                        return gr.update(choices=user_data_source, value=None)  # Return the updated choices
+               #         return gr.update(choices=user_data_source, value=None)  # Return the updated choices
 
                     # Gradio Interface: Create blocks to lay out components
-                    with gr.Blocks() as demo2:
-                        global user_data_source
+                #    with gr.Blocks() as demo2:
+                #        global user_data_source
 
                         # Define a CheckboxGroup which we may need to dynamically update
-                        checkbox = gr.CheckboxGroup(choices=user_data_source, label="Options")
-                        remove_button = gr.Button("Remove User")
+                #        checkbox = gr.CheckboxGroup(choices=user_data_source, label="Options")
+                #        remove_button = gr.Button("Remove User")
 
                         # Connect button click to update function, modifying the choices in CheckboxGroup
-                        remove_button.click(fn=update_options, inputs=checkbox, outputs=checkbox)
+                #        remove_button.click(fn=update_options, inputs=checkbox, outputs=checkbox)
 
         # Connect button to function and update components accordingly
         login_button.click(

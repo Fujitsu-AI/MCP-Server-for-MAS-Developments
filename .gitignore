@@ -31,3 +31,4 @@ agents/MCP-Client/test_prompts.txt
 clients/Python/Gradio/.gradio/cached_examples/16/log.csv
 agents/OpenAI_Compatible_API_Agent/.gradio/cached_examples/16/log.csv
 clients/Python/Gradio/config.json
+clients/Gradio/config.json
