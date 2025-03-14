@@ -1,13 +1,9 @@
 import asyncio
 import json
-import os
-import sys
 import time
 import uuid
 from pathlib import Path
-from typing import List
 
-import anyio
 import gradio as gr
 import httpx
 from openai import OpenAI
@@ -16,15 +12,10 @@ from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Gradio.Api import PrivateGPTAPI
 from clients.Gradio.mcp_client import MCPClient
-from mcpcli.config import load_config
-from mcpcli.messages.send_initialize_message import send_initialize
-from mcpcli.transport.stdio.stdio_client import stdio_client
 
-# Dummy credentials for demonstration purposes
-USERNAME = "user"
-PASSWORD = "pass"
 
-server_url = "http://127.0.0.1:3001/sse"
+# config (for now)
+sse_url = "http://127.0.0.1:3001/sse"
 server_script = "./dist/demo-mcp-server/demo-tools-stdio.js"
 
 # Konfiguration laden
@@ -54,7 +45,6 @@ async def login(username, password, selected_options):
     if pgpt.logged_in:
         # Successful login
         groups = pgpt.list_personal_groups()
-
         return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value=None)
     else:
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
@@ -62,6 +52,7 @@ async def login(username, password, selected_options):
 
 async def init_mcp_sse(server_url):
     global tools
+
     #todo make this configurable
 
     try:
@@ -91,8 +82,7 @@ async def init_mcp_sse(server_url):
 
 async def init_mcp_stdio(server_script):
     global tools
-    #todo make this configurable
-    print("Init Stdio")
+    #todo make this configurable with multiple servers
     try:
 
         await mcp_client.connect_to_stdio_server(server_script)
@@ -131,11 +121,11 @@ async def create_interface():
         # Login UI Elements
         login_message = gr.Markdown("")
 
-        #await init_mcp_sse(server_url)
+        #await init_mcp_sse(sse_url) # todo tool calls not working yet on sse, parameters not showing yet
         await init_mcp_stdio(server_script = "./dist/demo-mcp-server/demo-tools-stdio.js")
 
         with gr.Group() as login_interface:
-
+            # Store/Save credentials in browser
             get_local_storage = """
                 function() {
                   globalThis.setStorage = (key, value)=>{
@@ -162,7 +152,6 @@ async def create_interface():
 
             login_button = gr.Button("Login")
 
-            #local_data = gr.JSON({}, label="Local Storage")
             with gr.Blocks() as block:
                 block.load(
                     None,
@@ -183,7 +172,7 @@ async def create_interface():
                         global tools
 
                         history_openai_format = []
-
+                        # build and add system prompt
                         system_prompt = mcp_client.generate_system_prompt(tools)
                         history_openai_format.append({"role": "system", "content": system_prompt})
 
@@ -201,25 +190,23 @@ async def create_interface():
                                 api_key=vllm_api_key,
                                 http_client=httpx.Client(verify=False)
                             )
-                            #mcp_client.process_query(history_openai_format)
 
                             completion = client.chat.completions.create(
                                 model="/models/mistral-nemo-12b",
                                 messages=history_openai_format,
-                                temperature=1.0,
+                                temperature=0.8,
                                 tools = tools or None,
                                 stream=False
                             )
 
                             # Process response and handle tool calls
                             tool_results = []
-                            final_text = []
 
                             message = completion.choices[0].message
                             print(message)
                             tool_calls = []
 
-                            # Convert Ollama tool calls to OpenAI format
+                            # Convert tool calls to OpenAI format
                             if hasattr(message, "tool_calls") and message.tool_calls:
                                 for tool in message.tool_calls:
                                     print(tool.function.arguments)
@@ -235,7 +222,6 @@ async def create_interface():
                                     )
                             if tool_calls:
                                 for tool_call in tool_calls:
-                                    # Extract tool_name and raw_arguments as before
                                     tool_call_id = str(uuid.uuid4())
                                     if hasattr(tool_call, "id"):
                                         tool_call_id = str(tool_call.id)
@@ -258,17 +244,15 @@ async def create_interface():
                                         try:
                                             raw_arguments = json.loads(raw_arguments)
                                         except json.JSONDecodeError:
+                                            print("error json not valid")
                                             # If it's not valid JSON, just display as is
                                             pass
 
                                     # Now raw_arguments should be a dict or something we can pretty-print as JSON
                                     tool_args_str = json.dumps(raw_arguments, indent=2)
 
-
-                                    print(
-                                        f"**Tool Call:** {tool_name}\n\n```json\n{tool_args_str}\n```"
-                                    )
                                     tool_message =  f"**Tool Call:** {tool_name}\n\n```json\n{tool_args_str}\n```"
+                                    print(tool_message)
                                     tokens = tool_message.split(" ")
                                     partial_message = ""
                                     for i, token in enumerate(tokens):
@@ -277,7 +261,6 @@ async def create_interface():
                                         yield partial_message
 
                                     meta = await mcp_client.call_tool(tool_name, raw_arguments)
-                                    print(meta)
                                     print("Tool " + tool_name + " reply: " + str(meta.content[0]))
 
                                     tool_results.append({"call": str(tool_name), "result": meta.content})
@@ -317,19 +300,16 @@ async def create_interface():
                                     response = mcp_client.client.chat.completions.create(
                                         model="/models/mistral-nemo-12b",
                                         messages=history_openai_format,
-                                        temperature=1.0,
+                                        temperature=0.8,
                                         stream=False
                                     )
 
-                                    # final_text.append("LLM reply: " +response.choices[0].message.content)
                                     partial_message = ""
                                     tokens = response.choices[0].message.content.split(" ")
                                     for i, token in enumerate(tokens):
                                         partial_message = partial_message + token + " "
                                         await asyncio.sleep(0.05)
                                         yield partial_message
-
-
 
                             else:
                                 partial_message = ""
@@ -340,17 +320,10 @@ async def create_interface():
                                     yield partial_message
 
 
-                            #for chunk in completion:
-                            #    if len(chunk.choices[0].delta.content) != 0:
-                            #        partial_message = partial_message + chunk.choices[0].delta.content
-                            #        yield partial_message
-
-
-
                         else:
+                            # if at least one group is seleceted we use the api code to use the rag.
                             config.set_value("groups", selected_groups)
                             pgpt = PrivateGPTAPI(config)
-                            # otherwise we use the api code to use the rag.
                             response = pgpt.respond_with_context(history_openai_format)
                             print(response)
                             user_input = ""
@@ -383,10 +356,6 @@ async def create_interface():
                             yield response["answer"]
 
 
-                            #yield "data: [DONE]\n\n"
-
-
-
 
                     def change_group(selected_item):
                         global selected_groups
@@ -406,7 +375,8 @@ async def create_interface():
                                      cache_examples=False)
 
 
-                # Other Functions, todo
+                # todo add management of sources, users etc later.
+
                 #with gr.Tab("Sources"):
                 #    gr.Markdown("Test function, not working.")
 
