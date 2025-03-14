@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+   "demo-tools": {
+           "command": "node",
+           "args": [
+               "..\\..\\..\\dist\\demo-mcp-server\\demo-tools-stdio.js"
+           ]
+       }
+    }
+
+}

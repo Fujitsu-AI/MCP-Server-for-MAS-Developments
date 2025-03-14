@@ -10,4 +10,3 @@ async function weather(args){
     };
 }
 
-weather({"location": "Munich"})
