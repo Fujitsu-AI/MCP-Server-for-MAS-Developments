@@ -183,9 +183,14 @@ async def create_interface():
                         global tools
 
                         history_openai_format = []
+
+                        system_prompt = mcp_client.generate_system_prompt(tools)
+                        history_openai_format.append({"role": "system", "content": system_prompt})
+
                         for human, assistant in history:
                             history_openai_format.append({"role": "user", "content": human})
                             history_openai_format.append({"role": "assistant", "content": assistant})
+
                         history_openai_format.append({"role": "user", "content": message})
 
                         if len(selected_groups) == 0:
