@@ -12,13 +12,80 @@ from mcp.client.stdio import stdio_client
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from mcpcli.chat_handler import generate_system_prompt
 
 load_dotenv()  # load environment variables from .env
+
+
+def generate_system_prompt(tools):
+    """
+    Generate a concise system prompt for the assistant.
+
+    This prompt is internal and not displayed to the user.
+    """
+    prompt_generator = SystemPromptGenerator()
+    tools_json = {"tools": tools}
+
+    system_prompt = prompt_generator.generate_prompt(tools_json)
+    system_prompt += """
+
+**GENERAL GUIDELINES:**
+
+1. Step-by-step reasoning:
+   - Analyze tasks systematically.
+   - Break down complex problems into smaller, manageable parts.
+   - Verify assumptions at each step to avoid errors.
+   - Reflect on results to improve subsequent actions.
+
+2. Effective tool usage:
+   - Explore:
+     - Identify available information and verify its structure.
+     - Check assumptions and understand data relationships.
+   - Iterate:
+     - Start with simple queries or actions.
+     - Build upon successes, adjusting based on observations.
+   - Handle errors:
+     - Carefully analyze error messages.
+     - Use errors as a guide to refine your approach.
+     - Document what went wrong and suggest fixes.
+
+3. Clear communication:
+   - Explain your reasoning and decisions at each step.
+   - Share discoveries transparently with the user.
+   - Outline next steps or ask clarifying questions as needed.
+
+EXAMPLES OF BEST PRACTICES:
+
+- Working with databases:
+  - Check schema before writing queries.
+  - Verify the existence of columns or tables.
+  - Start with basic queries and refine based on results.
+
+- Processing data:
+  - Validate data formats and handle edge cases.
+  - Ensure integrity and correctness of results.
+
+- Accessing resources:
+  - Confirm resource availability and permissions.
+  - Handle missing or incomplete data gracefully.
+
+REMEMBER:
+- Be thorough and systematic.
+- Each tool call should have a clear and well-explained purpose.
+- Make reasonable assumptions if ambiguous.
+- Minimize unnecessary user interactions by providing actionable insights.
+
+EXAMPLES OF ASSUMPTIONS:
+- Default sorting (e.g., descending order) if not specified.
+- Assume basic user intentions, such as fetching top results by a common metric.
+"""
+    return system_prompt
+
 
 class MCPClient:
     def __init__(self, vllm_url, vllm_api_key):
 
+        self.stdio = None
+        self.write = None
         self._session_context = None
         self._streams_context = None
 
@@ -53,24 +120,14 @@ class MCPClient:
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
 
-    async def connect_to_stdio_server(self, server_script_path: str):
+    async def connect_to_stdio_server(self, server_params):
             """Connect to an MCP server
 
             Args:
                 server_script_path: Path to the server script (.py or .js)
             """
-            is_python = server_script_path.endswith('.py')
-            is_js = server_script_path.endswith('.js')
-            if not (is_python or is_js):
-                raise ValueError("Server script must be a .py or .js file")
 
-            command = "python" if is_python else "node"
-            self.server_params = StdioServerParameters(
-                command=command,
-                args=[server_script_path],
-                env=None
-            )
-
+            self.server_params = server_params
             stdio_transport = await self.exit_stack.enter_async_context(stdio_client(self.server_params))
             self.stdio, self.write = stdio_transport
             self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
@@ -82,6 +139,54 @@ class MCPClient:
             response = await self.session.list_tools()
             tools = response.tools
             print("\nConnected to server with tools:", [tool.name for tool in tools])
+            return self.stdio, self.write
+
+    async def load_config(self, config_path: str, server_name: str) -> StdioServerParameters:
+        """Load the server configuration from a JSON file."""
+        try:
+            # debug
+            print(f"Loading config from {config_path}")
+
+            # Read the configuration file
+            with open(config_path, "r") as config_file:
+                config = json.load(config_file)
+
+            # Retrieve the server configuration
+            server_config = config.get("mcpServers", {}).get(server_name)
+            if not server_config:
+                error_msg = f"Server '{server_name}' not found in configuration file."
+                print(error_msg)
+                raise ValueError(error_msg)
+
+            # Construct the server parameters
+            result = StdioServerParameters(
+                command=server_config["command"],
+                args=server_config.get("args", []),
+                env=server_config.get("env"),
+            )
+
+            # debug
+            print(
+                f"Loaded config: command='{result.command}', args={result.args}, env={result.env}"
+            )
+
+            # return result
+            return result
+
+        except FileNotFoundError:
+            # error
+            error_msg = f"Configuration file not found: {config_path}"
+            print(error_msg)
+            raise FileNotFoundError(error_msg)
+        except json.JSONDecodeError as e:
+            # json error
+            error_msg = f"Invalid JSON in configuration file: {e.msg}"
+            print(error_msg)
+            raise json.JSONDecodeError(error_msg, e.doc, e.pos)
+        except ValueError as e:
+            # error
+            print(str(e))
+            raise
 
     async def cleanup(self):
         """Properly clean up the session and streams"""
@@ -93,6 +198,7 @@ class MCPClient:
     async def call_tool(self, tool_name, raw_arguments):
         print("calling tool")
         try:
+            print(self.server_params)
             stdio_transport = await self.exit_stack.enter_async_context(stdio_client(self.server_params))
             self.stdio, self.write = stdio_transport
             self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
@@ -101,71 +207,6 @@ class MCPClient:
         except Exception as e:
             print(e)
             return "Error receiving result"
-
-    def generate_system_prompt(self, tools):
-        """
-        Generate a concise system prompt for the assistant.
-
-        This prompt is internal and not displayed to the user.
-        """
-        prompt_generator = SystemPromptGenerator()
-        tools_json = {"tools": tools}
-
-        system_prompt = prompt_generator.generate_prompt(tools_json)
-        system_prompt += """
-
-    **GENERAL GUIDELINES:**
-
-    1. Step-by-step reasoning:
-       - Analyze tasks systematically.
-       - Break down complex problems into smaller, manageable parts.
-       - Verify assumptions at each step to avoid errors.
-       - Reflect on results to improve subsequent actions.
-
-    2. Effective tool usage:
-       - Explore:
-         - Identify available information and verify its structure.
-         - Check assumptions and understand data relationships.
-       - Iterate:
-         - Start with simple queries or actions.
-         - Build upon successes, adjusting based on observations.
-       - Handle errors:
-         - Carefully analyze error messages.
-         - Use errors as a guide to refine your approach.
-         - Document what went wrong and suggest fixes.
-
-    3. Clear communication:
-       - Explain your reasoning and decisions at each step.
-       - Share discoveries transparently with the user.
-       - Outline next steps or ask clarifying questions as needed.
-
-    EXAMPLES OF BEST PRACTICES:
-
-    - Working with databases:
-      - Check schema before writing queries.
-      - Verify the existence of columns or tables.
-      - Start with basic queries and refine based on results.
-
-    - Processing data:
-      - Validate data formats and handle edge cases.
-      - Ensure integrity and correctness of results.
-
-    - Accessing resources:
-      - Confirm resource availability and permissions.
-      - Handle missing or incomplete data gracefully.
-
-    REMEMBER:
-    - Be thorough and systematic.
-    - Each tool call should have a clear and well-explained purpose.
-    - Make reasonable assumptions if ambiguous.
-    - Minimize unnecessary user interactions by providing actionable insights.
-
-    EXAMPLES OF ASSUMPTIONS:
-    - Default sorting (e.g., descending order) if not specified.
-    - Assume basic user intentions, such as fetching top results by a common metric.
-    """
-        return system_prompt
-
 
 
 class SystemPromptGenerator:

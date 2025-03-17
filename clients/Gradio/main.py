@@ -11,12 +11,11 @@ from openai import OpenAI
 from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Gradio.Api import PrivateGPTAPI
-from clients.Gradio.mcp_client import MCPClient
-
+from clients.Gradio.mcp_client import MCPClient, generate_system_prompt
 
 # config (for now)
-sse_url = "http://127.0.0.1:3001/sse"
-server_script = "./dist/demo-mcp-server/demo-tools-stdio.js"
+mcp_config = "./clients/Gradio/server_config.json"
+server_names   =["demo-tools", "filesystem"]
 
 # Konfiguration laden
 try:
@@ -29,12 +28,13 @@ except ConfigError as e:
     print(f"Configuration Error: {e}")
     exit(1)
 
-mcp_client = MCPClient(vllm_url, vllm_api_key)
 
-user_data_source = ["User1", "User2", "User3", "User4", "User5"]
-pgpt = None
+
+mcp_servers = []
+
+#user_data_source = ["User1", "User2", "User3", "User4", "User5"]
 selected_groups = []
-tools = []
+pgpt = None
 
 # Function to handle login logic
 async def login(username, password, selected_options):
@@ -50,61 +50,36 @@ async def login(username, password, selected_options):
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
 
 
-async def init_mcp_sse(server_url):
-    global tools
 
-    #todo make this configurable
-
+async def init_mcp_stdio(mcp_config, server_names):
+    #todo make this configurable with multiple servers
     try:
-        await mcp_client.connect_to_sse_server(server_url=server_url)
-        response = await mcp_client.session.list_tools()
-        tools = []
-        for tool in response.tools:
-            try:
-                print(tool)
-                tools.append(
-                    {
+        for server_name in server_names:
+            mcp_client = MCPClient(vllm_url, vllm_api_key)
+            server_params = await mcp_client.load_config(mcp_config, server_name)
+            await mcp_client.connect_to_stdio_server(server_params)
+
+
+            response = await mcp_client.session.list_tools()
+            tools = []
+            for tool in response.tools:
+                try:
+                    print(tool)
+                    tools.append(
+                        {
                         "type": "function",
                         "function": {
                             "name": tool.name,
                             "description": tool.description,
                             "parameters": tool.inputSchema
-                        }
-                    }
-                )
-            except Exception as e:
-                print(e)
+                            }
+                         }
+                    )
+                except Exception as e:
+                    print(e)
 
-    except:
-        print("error connecting to MCP SSE server")
-    #finally:
-    #    await client.cleanup()
-
-async def init_mcp_stdio(server_script):
-    global tools
-    #todo make this configurable with multiple servers
-    try:
-
-        await mcp_client.connect_to_stdio_server(server_script)
-        response = await mcp_client.session.list_tools()
-        tools = []
-        for tool in response.tools:
-            try:
-                print(tool)
-                tools.append(
-                    {
-                    "type": "function",
-                    "function": {
-                        "name": tool.name,
-                        "description": tool.description,
-                        "parameters": tool.inputSchema
-                        }
-                     }
-                )
-            except Exception as e:
-                print(e)
-
-        print(tools)
+            print(tools)
+            mcp_servers.append((mcp_client, tools))
 
     except:
         print("error connecting to MCP Stdio server")
@@ -121,8 +96,7 @@ async def create_interface():
         # Login UI Elements
         login_message = gr.Markdown("")
 
-        #await init_mcp_sse(sse_url) # todo tool calls not working yet on sse, parameters not showing yet
-        await init_mcp_stdio(server_script = "./dist/demo-mcp-server/demo-tools-stdio.js")
+        await init_mcp_stdio(mcp_config=mcp_config, server_names=server_names)
 
         with gr.Group() as login_interface:
             # Store/Save credentials in browser
@@ -169,11 +143,15 @@ async def create_interface():
                 with gr.Tab("Chat"):
                     async def predict(message, history):
                         global selected_groups
-                        global tools
+                        global mcp_servers
 
                         history_openai_format = []
-                        # build and add system prompt
-                        system_prompt = mcp_client.generate_system_prompt(tools)
+                        tools = []
+                        for mcp_server, mcptools in mcp_servers:
+                            for tool in mcptools:
+                                tools.append(tool)
+
+                        system_prompt = generate_system_prompt(tools)
                         history_openai_format.append({"role": "system", "content": system_prompt})
 
                         for human, assistant in history:
@@ -260,56 +238,61 @@ async def create_interface():
                                         await asyncio.sleep(0.05)
                                         yield partial_message
 
-                                    meta = await mcp_client.call_tool(tool_name, raw_arguments)
-                                    print("Tool " + tool_name + " reply: " + str(meta.content[0]))
 
-                                    tool_results.append({"call": str(tool_name), "result": meta.content})
-                                    # final_text.append(f"[Calling tool {tool_name} with args {raw_arguments}]")
+                                    for mcp_client, tools in mcp_servers:
+                                        if tool_name in str(tools): #todo: better check
+                                            print(tool_name + " in tools")
 
-                                    history_openai_format.append(
-                                        {
-                                            "role": "assistant",
-                                            "content": None,
-                                            "tool_calls": [
+                                            meta = await mcp_client.call_tool(tool_name, raw_arguments)
+                                            print("Tool " + tool_name + " reply: " + str(meta.content[0]))
+
+                                            tool_results.append({"call": str(tool_name), "result": meta.content})
+
+                                            history_openai_format.append(
                                                 {
-                                                    "id": tool_call_id,
-                                                    "type": "function",
-                                                    "function": {
-                                                        "name": tool_name,
-                                                        "arguments": json.dumps(raw_arguments)
-                                                        if isinstance(raw_arguments, dict)
-                                                        else raw_arguments,
-                                                    },
+                                                    "role": "assistant",
+                                                    "content": None,
+                                                    "tool_calls": [
+                                                        {
+                                                            "id": tool_call_id,
+                                                            "type": "function",
+                                                            "function": {
+                                                                "name": tool_name,
+                                                                "arguments": json.dumps(raw_arguments)
+                                                                if isinstance(raw_arguments, dict)
+                                                                else raw_arguments,
+                                                            },
+                                                        }
+                                                    ],
                                                 }
-                                            ],
-                                        }
-                                    )
+                                            )
 
-                                    # Continue conversation with tool results
-                                    if hasattr(meta.content[0], 'text') and meta.content[0].text:
-                                        history_openai_format.append(
-                                            {
-                                                "role": "tool",
-                                                "name": tool_name,
-                                                "content": str(meta.content[0].text),
-                                                "tool_call_id": tool_call_id,
-                                            }
-                                        )
+                                            # Continue conversation with tool results
+                                            if hasattr(meta.content[0], 'text') and meta.content[0].text:
+                                                history_openai_format.append(
+                                                    {
+                                                        "role": "tool",
+                                                        "name": tool_name,
+                                                        "content": str(meta.content[0].text),
+                                                        "tool_call_id": tool_call_id,
+                                                    }
+                                                )
 
-                                    # Get next response from Claude
-                                    response = mcp_client.client.chat.completions.create(
-                                        model="/models/mistral-nemo-12b",
-                                        messages=history_openai_format,
-                                        temperature=0.8,
-                                        stream=False
-                                    )
+                                            # Get next response from Claude
+                                            response = client.chat.completions.create(
+                                                model="/models/mistral-nemo-12b",
+                                                messages=history_openai_format,
+                                                temperature=0.8,
+                                                stream=False
+                                            )
 
-                                    partial_message = ""
-                                    tokens = response.choices[0].message.content.split(" ")
-                                    for i, token in enumerate(tokens):
-                                        partial_message = partial_message + token + " "
-                                        await asyncio.sleep(0.05)
-                                        yield partial_message
+                                            partial_message = ""
+                                            tokens = response.choices[0].message.content.split(" ")
+                                            for i, token in enumerate(tokens):
+                                                partial_message = partial_message + token + " "
+                                                await asyncio.sleep(0.05)
+                                                yield partial_message
+                                            break
 
                             else:
                                 partial_message = ""

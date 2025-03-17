@@ -1,0 +1,30 @@
+{
+  "mcpServers":
+  {
+   "demo-tools": {
+           "command": "node",
+           "args": [
+               "dist\\demo-mcp-server\\demo-tools-stdio.js"
+           ]
+       },
+    "filesystem": {
+          "command": "node",
+          "args": [
+            "clients\\Gradio\\mcp_servers\\filesystem\\dist\\index.js",
+            "clients\\Gradio\\mcp_servers\\filesystem\\test"
+          ]
+        },
+
+    "sqlite": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "clients\\Gradio\\mcp_servers\\sqlite",
+        "run",
+        "mcp-server-sqlite",
+        "--db-path",
+        "clients\\Gradio\\mcp_servers\\sqlite\\test.db"
+      ]
+    }
+ }
+}
