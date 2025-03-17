@@ -33,3 +33,4 @@ agents/OpenAI_Compatible_API_Agent/.gradio/cached_examples/16/log.csv
 clients/Python/Gradio/config.json
 clients/Gradio/config.json
 clients/Gradio/mcp_servers/sqlite/uv.lock
+clients/Gradio/mcp_servers/sqlite/test.db
