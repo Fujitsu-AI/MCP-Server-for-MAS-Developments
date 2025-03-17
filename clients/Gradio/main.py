@@ -404,7 +404,7 @@ async def create_interface():
                                      textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
-                                               "Are tomatoes vegetables?"],
+                                               "What directories do you have access to?"],
                                      cache_examples=False)
 
 
