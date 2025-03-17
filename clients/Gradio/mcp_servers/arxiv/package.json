@@ -1,0 +1,16 @@
+{
+  "name": "arxiv-mcp-server-wrapper",
+  "version": "1.0.0",
+  "description": "Node.js wrapper for the arXiv MCP Server",
+  "main": "arxiv-stdio.js",
+  "scripts": {
+    "start": "node arxiv-stdio.js"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "private": true
+}
