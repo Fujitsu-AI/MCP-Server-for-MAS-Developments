@@ -1,0 +1,2 @@
+arxiv-mcp-server>=0.2.8
+node-fetch>=2.6.0

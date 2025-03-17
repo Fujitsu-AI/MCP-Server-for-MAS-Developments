@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "demo-tools": {
+      "command": "node",
+      "args": [
+        "clients/Gradio/mcp_servers/demo-mcp-server/demo-tools-stdio.js"
+      ]
+    },
+    "arxiv": {
+      "command": "node",
+      "args": [
+        "clients/Gradio/mcp_servers/arxiv/arxiv-stdio.js"
+      ]
+    }
+  }
+}
