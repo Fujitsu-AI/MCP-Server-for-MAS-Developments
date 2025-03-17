@@ -11,11 +11,15 @@ from openai import OpenAI
 from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Gradio.Api import PrivateGPTAPI
-from clients.Gradio.mcp_client import MCPClient, generate_system_prompt
+from clients.Gradio.mcp_client import MCPClient, generate_system_prompt, load_config
+from clients.Gradio.messages.send_call_tool import send_call_tool
+from clients.Gradio.messages.send_initialize_message import send_initialize
+from clients.Gradio.messages.send_tools_list import send_tools_list
+from clients.Gradio.transport.stdio.stdio_client import stdio_client
 
-# config (for now)
+# config
 mcp_config = "./clients/Gradio/server_config.json"
-server_names   =["demo-tools", "filesystem"]
+server_names = ["demo-tools", "filesystem", "sqlite"]
 
 # Konfiguration laden
 try:
@@ -56,32 +60,36 @@ async def init_mcp_stdio(mcp_config, server_names):
     try:
         for server_name in server_names:
             mcp_client = MCPClient(vllm_url, vllm_api_key)
-            server_params = await mcp_client.load_config(mcp_config, server_name)
-            await mcp_client.connect_to_stdio_server(server_params)
+            server_params = await load_config(mcp_config, server_name)
+            try:
+                await mcp_client.connect_to_stdio_server(server_params, server_name)
 
 
-            response = await mcp_client.session.list_tools()
-            tools = []
-            for tool in response.tools:
-                try:
-                    print(tool)
-                    tools.append(
-                        {
-                        "type": "function",
-                        "function": {
-                            "name": tool.name,
-                            "description": tool.description,
-                            "parameters": tool.inputSchema
-                            }
-                         }
-                    )
-                except Exception as e:
-                    print(e)
 
-            print(tools)
-            mcp_servers.append((mcp_client, tools))
+                response = await mcp_client.session.list_tools()
+                tools = []
+                for tool in response.tools:
+                    try:
+                        print(tool)
+                        tools.append(
+                            {
+                            "type": "function",
+                            "function": {
+                                "name": tool.name,
+                                "description": tool.description,
+                                "parameters": tool.inputSchema
+                                }
+                             }
+                        )
+                    except Exception as e:
+                        print(e)
 
-    except:
+                mcp_servers.append((mcp_client, tools))
+            except Exception as e:
+                print(e)
+
+    except Exception as e:
+        print(e)
         print("error connecting to MCP Stdio server")
     #finally:
     #    await client.cleanup()
@@ -239,14 +247,16 @@ async def create_interface():
                                         yield partial_message
 
 
-                                    for mcp_client, tools in mcp_servers:
+                                    for mcp_server, tools in mcp_servers:
                                         if tool_name in str(tools): #todo: better check
                                             print(tool_name + " in tools")
 
-                                            meta = await mcp_client.call_tool(tool_name, raw_arguments)
-                                            print("Tool " + tool_name + " reply: " + str(meta.content[0]))
+                                            meta = await call_tool(mcp_server.name, tool_name, raw_arguments)
 
-                                            tool_results.append({"call": str(tool_name), "result": meta.content})
+                                            content = meta.get('content', [])
+                                            print("Tool " + tool_name + " reply: " + str(content))
+
+                                            tool_results.append({"call": str(tool_name), "result": content})
 
                                             history_openai_format.append(
                                                 {
@@ -268,17 +278,16 @@ async def create_interface():
                                             )
 
                                             # Continue conversation with tool results
-                                            if hasattr(meta.content[0], 'text') and meta.content[0].text:
+                                            if content[0].get("text") is not None:
                                                 history_openai_format.append(
                                                     {
                                                         "role": "tool",
                                                         "name": tool_name,
-                                                        "content": str(meta.content[0].text),
+                                                        "content": content[0].get("text"),
                                                         "tool_call_id": tool_call_id,
                                                     }
                                                 )
 
-                                            # Get next response from Claude
                                             response = client.chat.completions.create(
                                                 model="/models/mistral-nemo-12b",
                                                 messages=history_openai_format,
@@ -338,7 +347,48 @@ async def create_interface():
 
                             yield response["answer"]
 
+                    async def call_tool(mcp_server, tool_name, tool_args) -> json:
+                        print("starting to call the tool")
 
+                        tool_response = None
+                        try:
+                            server_params = await load_config(mcp_config, mcp_server)
+                            try:
+                                async with stdio_client(server_params) as (read_stream, write_stream):
+                                    # Check if our current config has a tool.
+
+                                    init_result = await send_initialize(read_stream, write_stream)
+                                    # check we got a result
+                                    if not init_result:
+                                        print("Server initialization failed")
+                                        return
+
+                                    tools = await send_tools_list(read_stream, write_stream)
+                                    stuff = json.dumps(tools)
+                                    toolsobject = json.loads(stuff)["tools"]
+                                    print(toolsobject)
+
+                                    server_has_tool = False
+                                    for tool in toolsobject:
+                                        if tool["name"] == tool_name:
+                                            print(f"Found tool {tool_name}.")
+                                            server_has_tool = True
+                                    if server_has_tool is False:
+                                        print("no tool in server")
+                                    else:
+                                        print(tool_args)
+                                        tool_response = await send_call_tool(
+                                            tool_name, tool_args, read_stream, write_stream)
+                                        raise BaseException()  # Until we find a better way to leave the async with
+
+                            except:
+                                raise BaseException()
+
+                            raise BaseException()
+                        except BaseException as e:
+                            pass
+
+                        return tool_response
 
                     def change_group(selected_item):
                         global selected_groups

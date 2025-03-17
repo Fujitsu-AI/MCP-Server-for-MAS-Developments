@@ -1,6 +1,7 @@
 import json
 import os
-import uuid
+import sys
+
 from typing import Optional
 from contextlib import AsyncExitStack
 
@@ -88,6 +89,7 @@ class MCPClient:
         self.write = None
         self._session_context = None
         self._streams_context = None
+        self.name = ""
 
         self.server_params = None
 
@@ -120,13 +122,13 @@ class MCPClient:
         print("\nConnected to server with tools:", [tool.name for tool in tools])
 
 
-    async def connect_to_stdio_server(self, server_params):
+    async def connect_to_stdio_server(self, server_params, name):
             """Connect to an MCP server
 
             Args:
                 server_script_path: Path to the server script (.py or .js)
             """
-
+            self.name = name
             self.server_params = server_params
             stdio_transport = await self.exit_stack.enter_async_context(stdio_client(self.server_params))
             self.stdio, self.write = stdio_transport
@@ -141,7 +143,17 @@ class MCPClient:
             print("\nConnected to server with tools:", [tool.name for tool in tools])
             return self.stdio, self.write
 
-    async def load_config(self, config_path: str, server_name: str) -> StdioServerParameters:
+
+    async def cleanup(self):
+        """Properly clean up the session and streams"""
+        if self._session_context:
+            await self._session_context.__aexit__(None, None, None)
+        if self._streams_context:
+            await self._streams_context.__aexit__(None, None, None)
+
+
+
+async def load_config(config_path: str, server_name: str) -> StdioServerParameters:
         """Load the server configuration from a JSON file."""
         try:
             # debug
@@ -187,27 +199,6 @@ class MCPClient:
             # error
             print(str(e))
             raise
-
-    async def cleanup(self):
-        """Properly clean up the session and streams"""
-        if self._session_context:
-            await self._session_context.__aexit__(None, None, None)
-        if self._streams_context:
-            await self._streams_context.__aexit__(None, None, None)
-
-    async def call_tool(self, tool_name, raw_arguments):
-        print("calling tool")
-        try:
-            print(self.server_params)
-            stdio_transport = await self.exit_stack.enter_async_context(stdio_client(self.server_params))
-            self.stdio, self.write = stdio_transport
-            self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
-            result = await self.session.call_tool(tool_name, raw_arguments)
-            return result
-        except Exception as e:
-            print(e)
-            return "Error receiving result"
-
 
 class SystemPromptGenerator:
     """
@@ -264,5 +255,41 @@ class SystemPromptGenerator:
 
         # return the prompt
         return prompt
+
+
+# Default environment variables to inherit
+DEFAULT_INHERITED_ENV_VARS = (
+    ["HOME", "LOGNAME", "PATH", "SHELL", "TERM", "USER"]
+    if sys.platform != "win32"
+    else [
+        "APPDATA",
+        "HOMEDRIVE",
+        "HOMEPATH",
+        "LOCALAPPDATA",
+        "PATH",
+        "PROCESSOR_ARCHITECTURE",
+        "SYSTEMDRIVE",
+        "SYSTEMROOT",
+        "TEMP",
+        "USERNAME",
+        "USERPROFILE",
+    ]
+)
+
+
+def get_default_environment() -> dict[str, str]:
+    """
+    Retrieve a dictionary of default environment variables to inherit.
+    """
+
+    # get the current environment
+    env = {
+        key: value
+        for key in DEFAULT_INHERITED_ENV_VARS
+        if (value := os.environ.get(key)) and not value.startswith("()")
+    }
+
+    # return the dictionary
+    return env
 
 

@@ -2,7 +2,6 @@
 import json
 import logging
 
-from mcp.server.sse import SseServerTransport
 
 from .transport.stdio.stdio_server_parameters import StdioServerParameters
 
