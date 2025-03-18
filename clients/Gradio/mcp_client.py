@@ -293,3 +293,9 @@ def get_default_environment() -> dict[str, str]:
     return env
 
 
+def clean_response(response):
+    # Remove artefacts from reply here
+    response = response.replace("[TOOL_CALLS] ", "")
+    if "```json" in response:
+        response = response.replace("'''json", "").replace("'''", "")
+    return response

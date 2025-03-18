@@ -7,11 +7,12 @@ from pathlib import Path
 import gradio as gr
 import httpx
 from openai import OpenAI
+from openpyxl.styles.builtins import title
 
 from agents.AgentInterface.Python.config import Config, ConfigError
 from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Gradio.Api import PrivateGPTAPI
-from clients.Gradio.mcp_client import MCPClient, generate_system_prompt, load_config
+from clients.Gradio.mcp_client import MCPClient, generate_system_prompt, load_config, clean_response
 from clients.Gradio.messages.send_call_tool import send_call_tool
 from clients.Gradio.messages.send_initialize_message import send_initialize
 from clients.Gradio.messages.send_tools_list import send_tools_list
@@ -100,7 +101,11 @@ def show_image(img):
 
 
 async def create_interface():
-    with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}") as demo:
+    with (gr.Blocks(theme="ocean",
+                   css="footer {visibility: hidden}",
+                   title="PrivateGPT MCP Multi-API Demo"
+                   )
+          as demo):
         # Login UI Elements
         login_message = gr.Markdown("")
 
@@ -159,17 +164,19 @@ async def create_interface():
                             for tool in mcptools:
                                 tools.append(tool)
 
-                        system_prompt = generate_system_prompt(tools)
-                        history_openai_format.append({"role": "system", "content": system_prompt})
 
-                        for human, assistant in history:
-                            history_openai_format.append({"role": "user", "content": human})
-                            history_openai_format.append({"role": "assistant", "content": assistant})
-
-                        history_openai_format.append({"role": "user", "content": message})
 
                         if len(selected_groups) == 0:
                             # If we don't use a group, we use vllm directly.
+
+                            system_prompt = generate_system_prompt(tools)
+                            history_openai_format.append({"role": "system", "content": system_prompt})
+
+                            for human, assistant in history:
+                                history_openai_format.append({"role": "user", "content": human})
+                                history_openai_format.append({"role": "assistant", "content": assistant})
+
+                            history_openai_format.append({"role": "user", "content": message})
 
                             client = OpenAI(
                                 base_url=vllm_url,
@@ -296,7 +303,7 @@ async def create_interface():
                                             )
 
                                             partial_message = ""
-                                            tokens = response.choices[0].message.content.split(" ")
+                                            tokens = clean_response(response.choices[0].message.content).split(" ")
                                             for i, token in enumerate(tokens):
                                                 partial_message = partial_message + token + " "
                                                 await asyncio.sleep(0.05)
@@ -314,6 +321,14 @@ async def create_interface():
 
                         else:
                             # if at least one group is seleceted we use the api code to use the rag.
+
+                            for human, assistant in history:
+                                history_openai_format.append({"role": "user", "content": human})
+                                history_openai_format.append({"role": "assistant", "content": assistant})
+
+                            history_openai_format.append({"role": "user", "content": message})
+
+
                             config.set_value("groups", selected_groups)
                             pgpt = PrivateGPTAPI(config)
                             response = pgpt.respond_with_context(history_openai_format)
@@ -464,8 +479,7 @@ async def create_interface():
             outputs=[login_interface, dashboard_interface, login_message, groupslist]
         )
 
-
-    demo.launch()
+    demo.launch(favicon_path="./clients/Gradio/favicon.ico")
 
 
 asyncio.run(create_interface())
