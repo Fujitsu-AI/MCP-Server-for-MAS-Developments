@@ -20,7 +20,7 @@ async function gold(args){
    const json = await fetch(apiUrl)
                 .then(response => response.json());
    //console.log(json);
-    var result = json.price + " USD"
+    var result = json.price.toFixed(2) + " USD"
     return {
       content: [{ type: "text", text: `${result}` }],
     };

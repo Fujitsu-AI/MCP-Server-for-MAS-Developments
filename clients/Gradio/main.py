@@ -190,7 +190,6 @@ async def create_interface():
                                 http_client=httpx.Client(verify=False)
                             )
 
-                            print(temperature)
                             completion = client.chat.completions.create(
                                 model=model,
                                 messages=history_openai_format,

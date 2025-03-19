@@ -20,6 +20,15 @@
         "args": ["mcp-server-fetch"]
       },
 
+     "arxiv": {
+      "command": "node",
+      "args": [
+        "clients/Gradio/mcp_servers/arxiv/arxiv-stdio.js"
+      ]
+    },
+
+
+
     "sqlite": {
       "command": "uv",
       "args": [
