@@ -6,6 +6,7 @@ from pathlib import Path
 
 import gradio as gr
 import httpx
+from gradio_modal import Modal
 from openai import OpenAI
 from openpyxl.styles.builtins import title
 
@@ -18,9 +19,12 @@ from clients.Gradio.messages.send_initialize_message import send_initialize
 from clients.Gradio.messages.send_tools_list import send_tools_list
 from clients.Gradio.transport.stdio.stdio_client import stdio_client
 
+
 # config
 mcp_config = "./clients/Gradio/server_config.json"
 server_names = ["demo-tools", "filesystem", "sqlite"]
+temperature = 0.8
+model = "/models/mistral-nemo-12b"
 
 # Konfiguration laden
 try:
@@ -157,6 +161,8 @@ async def create_interface():
                     async def predict(message, history):
                         global selected_groups
                         global mcp_servers
+                        global temperature
+                        global model
 
                         history_openai_format = []
                         tools = []
@@ -184,10 +190,11 @@ async def create_interface():
                                 http_client=httpx.Client(verify=False)
                             )
 
+                            print(temperature)
                             completion = client.chat.completions.create(
-                                model="/models/mistral-nemo-12b",
+                                model=model,
                                 messages=history_openai_format,
-                                temperature=0.8,
+                                temperature=temperature,
                                 tools = tools or None,
                                 stream=False
                             )
@@ -296,9 +303,9 @@ async def create_interface():
                                                 )
 
                                             response = client.chat.completions.create(
-                                                model="/models/mistral-nemo-12b",
+                                                model=model,
                                                 messages=history_openai_format,
-                                                temperature=0.8,
+                                                temperature=temperature,
                                                 stream=False
                                             )
 
@@ -312,7 +319,7 @@ async def create_interface():
 
                             else:
                                 partial_message = ""
-                                tokens = message.content.split(" ")
+                                tokens = clean_response(message.content).split(" ")
                                 for i, token in enumerate(tokens):
                                     partial_message = partial_message + token + " "
                                     await asyncio.sleep(0.05)
@@ -346,7 +353,7 @@ async def create_interface():
                                     "id": i,
                                     "object": "chat.completion.chunk",
                                     "created": time.time(),
-                                    "model": "/models/mistral-nemo-12b",
+                                    "model": model,
                                     "choices": [{"delta": {"content": token + " "}}],
                                     "usage": {
                                         "prompt_tokens": num_tokens_request,
@@ -413,6 +420,7 @@ async def create_interface():
                     groupslist.change(change_group, groupslist, None)
 
 
+
                     gr.ChatInterface(predict,
                                      chatbot=gr.Chatbot(height=500, show_label=False),
                                      type='tuples',
@@ -421,8 +429,34 @@ async def create_interface():
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "What directories do you have access to?"],
                                      cache_examples=False)
+                    show_btn = gr.Button("Chat Settings")
+
+                with Modal(visible=False) as modal:
+                    global temperature
 
 
+
+
+                    def change_temperature(value):
+                        global temperature
+                        try:
+                            val = float(value)
+                            if isinstance(val, float):
+                                if 0.0 <= val <= 1.0:
+                                    temperature = float(value)
+                                    success_message = gr.Success("New Temperature saved")
+                        except:
+                            error_message = gr.Warning("Not a valid entry")
+
+
+
+                    temperature_input = gr.Textbox(label="Temperature", placeholder=str(temperature))
+                    temperature_input.change(change_temperature, temperature_input)
+
+
+
+
+                show_btn.click(lambda: Modal(visible=True), None, modal)
                 # todo add management of sources, users etc later.
 
                 #with gr.Tab("Sources"):
