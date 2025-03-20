@@ -23,9 +23,15 @@ from clients.Gradio.transport.stdio.stdio_client import stdio_client
 
 # config
 mcp_config = "./clients/Gradio/server_config.json"
+
+#selection of mcp servers from the config
 server_names = ["demo-tools", "filesystem", "sqlite"]
+
 temperature = 0.8
 model = "/models/mistral-nemo-12b"
+
+# if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
+all_mcp_servers = True
 
 # Konfiguration laden
 try:
@@ -37,6 +43,12 @@ try:
 except ConfigError as e:
     print(f"Configuration Error: {e}")
     exit(1)
+
+if all_mcp_servers:
+    with open(mcp_config, 'r') as f:
+        server_names = list(json.load(f)['mcpServers'].keys())
+        print(server_names)
+
 
 
 

@@ -1,5 +1,6 @@
 import argparse
 
+import httpx
 from openai import OpenAI
 #pip install python-certifi-win32
 
@@ -13,6 +14,7 @@ if __name__ == "__main__":
     client = OpenAI(
         base_url=args.base_url,
         api_key=args.api_key,
+        http_client=httpx.Client(verify=False)
     )
 
     stream = False
