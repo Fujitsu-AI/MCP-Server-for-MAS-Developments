@@ -153,6 +153,20 @@ class PrivateGPTAPI:
         except NetworkError as e:
             return []
 
+    def get_document_info(self, id):
+        url = f"{self.base_url}/sources/{id}"
+        try:
+            resp = self.session.get(url)
+            j = json.loads(resp.content)
+            data_block = j["data"]
+            if not data_block:
+                return []
+
+            return data_block
+
+        except NetworkError as e:
+            return []
+
     def query_private_gpt(self, user_input) -> json:
         """Send a question to the chat and retrieve the response."""
         if not self.chat_id:

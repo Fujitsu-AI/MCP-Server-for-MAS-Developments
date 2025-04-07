@@ -1,9 +1,7 @@
 import asyncio
 import json
-import time
 import uuid
 from pathlib import Path
-
 
 import gradio as gr
 import httpx
@@ -12,7 +10,6 @@ from openai import OpenAI
 
 
 from agents.AgentInterface.Python.config import Config, ConfigError
-from agents.OpenAI_Compatible_API_Agent.Python.open_ai_helper import num_tokens
 from clients.Gradio.Api import PrivateGPTAPI
 from clients.Gradio.mcp_client import MCPClient, generate_system_prompt, load_config, clean_response
 from clients.Gradio.messages.send_call_tool import send_call_tool
@@ -26,12 +23,13 @@ mcp_config = "./clients/Gradio/server_config.json"
 
 #selection of mcp servers from the config
 server_names = ["demo-tools", "filesystem", "sqlite"]
+# if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
+all_mcp_servers = True
 
 temperature = 0.8
 model = "/models/mistral-nemo-12b"
 
-# if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
-all_mcp_servers = True
+
 
 # Konfiguration laden
 try:
@@ -191,11 +189,15 @@ async def create_interface():
                             system_prompt = generate_system_prompt(tools)
                             history_openai_format.append({"role": "system", "content": system_prompt})
 
-                            for human, assistant in history:
-                                history_openai_format.append({"role": "user", "content": human})
-                                history_openai_format.append({"role": "assistant", "content": assistant})
+                            last_role = "system"
+                            for entry in history:
+                                if last_role != entry["role"]:
+                                    history_openai_format.append({"role": entry["role"], "content": entry["content"]})
+                                    last_role = entry["role"]
 
                             history_openai_format.append({"role": "user", "content": message})
+
+                            print(history_openai_format)
 
                             client = OpenAI(
                                 base_url=vllm_url,
@@ -263,15 +265,24 @@ async def create_interface():
                                     # Now raw_arguments should be a dict or something we can pretty-print as JSON
                                     tool_args_str = json.dumps(raw_arguments, indent=2)
 
-                                    tool_message =  f"**Tool Call:** {tool_name}\n\n```json\n{tool_args_str}\n```"
+                                    tool_message =  f"```json\n{tool_args_str}\n```"
                                     print(tool_message)
-                                    tokens = tool_message.split(" ")
-                                    partial_message = ""
-                                    for i, token in enumerate(tokens):
-                                        partial_message = partial_message + token + " "
-                                        await asyncio.sleep(0.05)
-                                        yield partial_message
+                                    #tokens = tool_message.split(" ")
+                                    #partial_message = ""
+                                    #for i, token in enumerate(tokens):
+                                    #    partial_message = partial_message + token + " "
+                                    #    await asyncio.sleep(0.05)
+                                    #    yield partial_message
 
+                                    yield [
+                                        {
+                                            "role": "assistant",
+                                            "content": "\n" + tool_message + "\n",
+                                            "metadata": {"title": f"🛠️ Using tool {tool_name}",
+                                                         "status": "pending"}
+                                        },
+
+                                    ]
 
                                     for mcp_server, tools in mcp_servers:
                                         if tool_name in str(tools): #todo: better check
@@ -321,29 +332,56 @@ async def create_interface():
                                                 stream=False
                                             )
 
-                                            partial_message = ""
+                                            partial_mes = ""
+                                            #history.append({"role": "assistant", "content": "I called a tool",
+                                            #                     "metadata": {"title": f"🛠️ Used tool {"Test"}"}})
                                             tokens = clean_response(response.choices[0].message.content).split(" ")
                                             for i, token in enumerate(tokens):
-                                                partial_message = partial_message + token + " "
+                                                partial_mes = partial_mes + token + " "
                                                 await asyncio.sleep(0.05)
-                                                yield partial_message
+                                                yield partial_mes
+                                            #history.append({"role": "assistant", "content": clean_response(response.choices[0].message.content)})
+
+                                            yield [
+                                                    {
+                                                        "role": "assistant",
+                                                        "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                        "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                     "status": "done"}
+                                                    },
+                                                    {
+                                                        "role": "user",
+                                                        "content": ""
+                                                    },
+                                                    {
+                                                        "role": "assistant",
+                                                        "content": clean_response(response.choices[0].message.content)
+                                                    },
+
+
+                                                ]
+
                                             break
 
+
+
                             else:
-                                partial_message = ""
+                                partial_mes = ""
                                 tokens = clean_response(message.content).split(" ")
                                 for i, token in enumerate(tokens):
-                                    partial_message = partial_message + token + " "
+                                    partial_mes = partial_mes + token + " "
                                     await asyncio.sleep(0.05)
-                                    yield partial_message
+                                    yield partial_mes
 
 
                         else:
                             # if at least one group is seleceted we use the api code to use the rag.
 
-                            for human, assistant in history:
-                                history_openai_format.append({"role": "user", "content": human})
-                                history_openai_format.append({"role": "assistant", "content": assistant})
+                            last_role = "system"
+                            for entry in history:
+                                if last_role != entry["role"]:
+                                    history_openai_format.append({"role": entry["role"], "content": entry["content"]})
+                                    last_role = entry["role"]
 
                             history_openai_format.append({"role": "user", "content": message})
 
@@ -356,30 +394,35 @@ async def create_interface():
                             for message in history_openai_format:
                                 user_input += json.dumps(message)
 
-                            num_tokens_request, num_tokens_reply, num_tokens_overall = num_tokens(user_input,response["answer"])
-
                             tokens = response["answer"].split(" ")
                             partial_message = ""
+
                             for i, token in enumerate(tokens):
-                                chunk = {
-                                    "id": i,
-                                    "object": "chat.completion.chunk",
-                                    "created": time.time(),
-                                    "model": model,
-                                    "choices": [{"delta": {"content": token + " "}}],
-                                    "usage": {
-                                        "prompt_tokens": num_tokens_request,
-                                        "completion_tokens": num_tokens_reply,
-                                        "total_tokens": num_tokens_overall
-                                    }
-                                }
-
-
                                 partial_message = partial_message + token + " "
                                 await asyncio.sleep(0.05)
                                 yield partial_message
 
-                            yield response["answer"]
+                            sources = "\n\nSources:\n"
+
+                            citations = []
+                            for source in response["sources"]:
+                                document_info = pgpt.get_document_info(source["documentId"])
+
+                                citations.append(document_info["data"]["title"] + " Page: " + str(source["page"] + 1) + "\n" + str(source["context"]).replace("#", "") + "\n\n")
+                            result = [{"role": "assistant",
+                                    "content": response["answer"]
+                                    }
+                                 ]
+                            if len(citations) > 0:
+                                result.append( {
+                                       "role": "assistant",
+                                       "content": "\n".join([f"• {cite}" for cite in citations]),
+                                       "metadata": {"title": "📚 Citations",
+                                                    "status": "done"}
+                                   })
+
+                            yield result
+
 
                     async def call_tool(mcp_server, tool_name, tool_args) -> json:
                         print("starting to call the tool")
@@ -431,16 +474,28 @@ async def create_interface():
                     groupslist = gr.CheckboxGroup(choices=[], label="Groups")
                     groupslist.change(change_group, groupslist, None)
 
+                    chatbot = gr.Chatbot(height=500,
+                                        show_label=False,
+                                          type="messages",
+                                          avatar_images=(
+                                              None,
+                                              "./clients/Gradio/logos/Logo_dark.svg"
+                                          ),
 
 
+                                         )
+
+                    state = gr.State(value=0)
                     gr.ChatInterface(predict,
-                                     chatbot=gr.Chatbot(height=500, show_label=False),
-                                     type='tuples',
+                                     chatbot=chatbot,
+                                     type="messages",
                                      textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "What directories do you have access to?"],
-                                     cache_examples=False)
+                                     cache_examples=False
+
+                    )
                     show_btn = gr.Button("Chat Settings")
 
                 with Modal(visible=False) as modal:
@@ -526,6 +581,7 @@ async def create_interface():
         )
 
     demo.launch(favicon_path="./clients/Gradio/favicon.ico")
+
 
 
 asyncio.run(create_interface())
