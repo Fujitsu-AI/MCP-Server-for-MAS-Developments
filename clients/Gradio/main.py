@@ -72,7 +72,6 @@ async def login(username, password, selected_options):
 
 
 async def init_mcp_stdio(mcp_config, server_names):
-    #todo make this configurable with multiple servers
     try:
         for server_name in server_names:
             mcp_client = MCPClient(vllm_url, vllm_api_key)
@@ -474,25 +473,22 @@ async def create_interface():
                     groupslist = gr.CheckboxGroup(choices=[], label="Groups")
                     groupslist.change(change_group, groupslist, None)
 
-                    chatbot = gr.Chatbot(height=500,
+                    chatbot = gr.Chatbot(
                                         show_label=False,
                                           type="messages",
                                           avatar_images=(
                                               None,
                                               "./clients/Gradio/logos/Logo_dark.svg"
                                           ),
-
-
                                          )
 
-                    state = gr.State(value=0)
                     gr.ChatInterface(predict,
                                      chatbot=chatbot,
                                      type="messages",
                                      textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
-                                               "What directories do you have access to?"],
+                                               "How is the weather today in Munich?"],
                                      cache_examples=False
 
                     )
