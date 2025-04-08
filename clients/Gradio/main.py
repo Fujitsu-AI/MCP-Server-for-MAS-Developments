@@ -190,7 +190,7 @@ async def create_interface():
 
                             last_role = "system"
                             for entry in history:
-                                if last_role != entry["role"]:
+                                if last_role != entry["role"] and not hasattr(entry, "tool_calls") or  (hasattr(entry, "tool_calls") and (entry["tool_calls"] is None  or entry["tool_calls"] == [])):
                                     history_openai_format.append({"role": entry["role"], "content": entry["content"]})
                                     last_role = entry["role"]
 
@@ -215,13 +215,32 @@ async def create_interface():
                             # Process response and handle tool calls
                             tool_results = []
 
-                            message = completion.choices[0].message
-                            print(message)
+                            result = completion.choices[0].message
+                            print(result)
                             tool_calls = []
 
+                            # work around the mistral llm weirdness
+                            other_weird_stuff = str(result.content).lstrip().replace("[\n```", "```").replace("{\n```", "```")
+                            if result.content is not None or other_weird_stuff.startswith('```'):
+                                if result.content.startswith("[TOOL_CALLS]") or other_weird_stuff.startswith("```") :
+                                    print("entering TOOL_CALLS")
+                                    history_openai_format = [{"role": "user", "content": message}]
+                                    completion = client.chat.completions.create(
+                                        model=model,
+                                        messages=history_openai_format,
+                                        temperature=temperature,
+                                        tools=tools or None,
+                                        stream=False
+                                    )
+                                    tool_results = []
+
+                                    result = completion.choices[0].message
+                                    print(message)
+                                    tool_calls = []
+
                             # Convert tool calls to OpenAI format
-                            if hasattr(message, "tool_calls") and message.tool_calls:
-                                for tool in message.tool_calls:
+                            if hasattr(result, "tool_calls") and result.tool_calls:
+                                for tool in result.tool_calls:
                                     print(tool.function.arguments)
                                     tool_calls.append(
                                         {
@@ -233,6 +252,7 @@ async def create_interface():
                                             },
                                         }
                                     )
+
                             if tool_calls:
                                 for tool_call in tool_calls:
                                     tool_call_id = str(uuid.uuid4())
@@ -266,12 +286,7 @@ async def create_interface():
 
                                     tool_message =  f"```json\n{tool_args_str}\n```"
                                     print(tool_message)
-                                    #tokens = tool_message.split(" ")
-                                    #partial_message = ""
-                                    #for i, token in enumerate(tokens):
-                                    #    partial_message = partial_message + token + " "
-                                    #    await asyncio.sleep(0.05)
-                                    #    yield partial_message
+
 
                                     yield [
                                         {
@@ -288,6 +303,8 @@ async def create_interface():
                                             print(tool_name + " in tools")
 
                                             meta = await call_tool(mcp_server.name, tool_name, raw_arguments)
+                                            if meta is None:
+                                                return
 
                                             content = meta.get('content', [])
                                             print("Tool " + tool_name + " reply: " + str(content))
@@ -314,7 +331,7 @@ async def create_interface():
                                             )
 
                                             # Continue conversation with tool results
-                                            if content[0].get("text") is not None:
+                                            if len(content)> 0 and content[0].get("text") is not None:
                                                 history_openai_format.append(
                                                     {
                                                         "role": "tool",
@@ -345,12 +362,9 @@ async def create_interface():
                                                     {
                                                         "role": "assistant",
                                                         "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                        "tool_calls": [tool_name],
                                                         "metadata": {"title": f"🛠️ Used tool {tool_name}",
                                                                      "status": "done"}
-                                                    },
-                                                    {
-                                                        "role": "user",
-                                                        "content": ""
                                                     },
                                                     {
                                                         "role": "assistant",
@@ -362,11 +376,9 @@ async def create_interface():
 
                                             break
 
-
-
                             else:
                                 partial_mes = ""
-                                tokens = clean_response(message.content).split(" ")
+                                tokens = clean_response(result.content).split(" ")
                                 for i, token in enumerate(tokens):
                                     partial_mes = partial_mes + token + " "
                                     await asyncio.sleep(0.05)
@@ -407,12 +419,18 @@ async def create_interface():
                             for source in response["sources"]:
                                 document_info = pgpt.get_document_info(source["documentId"])
 
-                                citations.append(document_info["data"]["title"] + " Page: " + str(source["page"] + 1) + "\n" + str(source["context"]).replace("#", "") + "\n\n")
+                                citations.append(document_info["data"]["title"] +
+                                                 #" Page: " + str(source["page"] + 1) +
+                                                 "\n" + str(source["context"]).replace("#", "") + "\n\n")
                             result = [{"role": "assistant",
                                     "content": response["answer"]
                                     }
                                  ]
                             if len(citations) > 0:
+                                result.append({
+                                    "role": "user",
+                                    "content": " "
+                                })
                                 result.append( {
                                        "role": "assistant",
                                        "content": "\n".join([f"• {cite}" for cite in citations]),
