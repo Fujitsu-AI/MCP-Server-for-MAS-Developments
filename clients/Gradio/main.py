@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import uuid
 from pathlib import Path
 
@@ -11,6 +12,7 @@ from openai import OpenAI
 
 from agents.AgentInterface.Python.config import Config, ConfigError
 from clients.Gradio.Api import PrivateGPTAPI
+from clients.Gradio.file_tools.loader_factory import LoadersFactory
 from clients.Gradio.mcp_client import MCPClient, generate_system_prompt, load_config, clean_response
 from clients.Gradio.messages.send_call_tool import send_call_tool
 from clients.Gradio.messages.send_initialize_message import send_initialize
@@ -166,7 +168,7 @@ async def create_interface():
 
         # Dashboard UI Elements
         with gr.Group(visible=False) as dashboard_interface:
-            with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}"):
+            with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}",  fill_height=True):
                 with gr.Tab("Chat"):
                     async def predict(message, history):
                         global selected_groups
@@ -174,24 +176,61 @@ async def create_interface():
                         global temperature
                         global model
 
+                        # deal with multimodal textfield
+                        files = message["files"]
+                        message = str(message["text"])
+
+                        if len(files) > 0:
+                            for file_path in files:
+                                print(file_path)
+                                # Get the file extension
+                                file_extension = os.path.splitext(file_path)[1]
+                                print(f"File Extension: {file_extension}")
+
+                                content = ""
+                                if file_extension == ".pdf":
+                                    content = LoadersFactory().pdf(file_path)
+                                elif file_extension == ".csv":
+                                    content = LoadersFactory().csv(file_path)
+                                elif file_extension == ".xlsx":
+                                    content = LoadersFactory().xlsx(file_path)
+                                elif file_extension == ".md":
+                                    content = LoadersFactory().markdown(file_path)
+                                # todo add more sources
+
+                                markdown = LoadersFactory().convert_documents_to_markdown(content)
+                                print(markdown)
+                                message += "\n\n" + markdown
+
+
                         history_openai_format = []
                         tools = []
-                        for mcp_server, mcptools in mcp_servers:
-                            for tool in mcptools:
-                                tools.append(tool)
+                        # only add mcp servers when we don't have a file attached for now.
+                        if len(files) == 0:
+                            for mcp_server, mcptools in mcp_servers:
+                                for tool in mcptools:
+                                    tools.append(tool)
+
 
 
 
                         if len(selected_groups) == 0:
                             # If we don't use a group, we use vllm directly.
 
-                            system_prompt = generate_system_prompt(tools)
+                            # only make the mcp prompt when we don't have a file attached
+                            if len(files) == 0:
+                                system_prompt = generate_system_prompt(tools)
+
+                            else:
+                                system_prompt = "You have access to a document. The user will instruct you what to do with it."
+
                             history_openai_format.append({"role": "system", "content": system_prompt})
+
 
                             last_role = "system"
                             for entry in history:
                                 if last_role != entry["role"] and not hasattr(entry, "tool_calls") or  (hasattr(entry, "tool_calls") and (entry["tool_calls"] is None  or entry["tool_calls"] == [])):
-                                    history_openai_format.append({"role": entry["role"], "content": entry["content"]})
+                                    history_openai_format.append({"role": entry["role"], "content": str(entry["content"])})
                                     last_role = entry["role"]
 
                             history_openai_format.append({"role": "user", "content": message})
@@ -503,7 +542,7 @@ async def create_interface():
                     gr.ChatInterface(predict,
                                      chatbot=chatbot,
                                      type="messages",
-                                     textbox=gr.Textbox(placeholder="Ask me a question", container=True, scale=7),
+                                     textbox=gr.MultimodalTextbox(placeholder="Ask me a question", container=True, scale=7, sources=["upload"]),
                                      theme="ocean",
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "How is the weather today in Munich?"],
