@@ -1,4 +1,6 @@
 import asyncio
+import gzip
+import io
 import json
 import os
 import uuid
@@ -6,9 +8,9 @@ from pathlib import Path
 
 import gradio as gr
 import httpx
+import requests
 from gradio_modal import Modal
 from openai import OpenAI
-
 
 from agents.AgentInterface.Python.config import Config, ConfigError
 from clients.Gradio.Api import PrivateGPTAPI
@@ -29,7 +31,9 @@ server_names = ["demo-tools", "filesystem", "sqlite"]
 all_mcp_servers = True
 
 temperature = 0.8
+top_p = 0.8
 model = "/models/mistral-nemo-12b"
+md_model = None
 
 
 
@@ -69,6 +73,7 @@ async def login(username, password, selected_options):
         groups = pgpt.list_personal_groups()
         return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value=None)
     else:
+        gr.Warning("Error connecting.")
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
 
 
@@ -117,10 +122,19 @@ def show_image(img):
 
 
 async def create_interface():
+    theme = gr.themes.Default(primary_hue="blue").set(
+        loader_color="#FF0000",
+        slider_color="#FF0000",
+    )
+
     with (gr.Blocks(theme="ocean",
-                   css="footer {visibility: hidden}",
-                   title="PrivateGPT MCP Multi-API Demo"
-                   )
+                   title="PrivateGPT MCP Multi-API Demo",
+                   fill_height=True,
+                   #css="footer{display:none !important}"
+                   css="footer {visibility: hidden}"
+
+
+                    )
           as demo):
         # Login UI Elements
         login_message = gr.Markdown("")
@@ -143,11 +157,13 @@ async def create_interface():
                   }
                 """
 
-
-            gr.Image(value="./clients/Gradio/logos/Logo_dark.svg", show_label=False,
-                     show_download_button=False,
-                     show_fullscreen_button=False, height=200)
-
+            with gr.Row():
+                gr.Image(value="./clients/Gradio/logos/Logo_dark.svg", show_label=False,
+                         show_download_button=False,
+                         show_fullscreen_button=False, height=300, width=200, scale=1)
+                gr.Image(value="./clients/Gradio/logos/fsas.png", show_label=False,
+                         show_download_button=False,
+                         show_fullscreen_button=False, height=300, scale=3)
             username_input = gr.Textbox(label="Username")
             username_input.change(None, username_input, None, js="(v)=>{ setStorage('login',v) }")
             password_input = gr.Textbox(label="Password", type="password")
@@ -155,8 +171,8 @@ async def create_interface():
 
             login_button = gr.Button("Login")
 
-            with gr.Blocks() as block:
-                block.load(
+            with gr.Blocks() as vl:
+                vl.load(
                     None,
                     inputs=None,
                     outputs=[username_input, password_input],
@@ -168,17 +184,24 @@ async def create_interface():
 
         # Dashboard UI Elements
         with gr.Group(visible=False) as dashboard_interface:
-            with gr.Blocks(theme="ocean",  css="footer {visibility: hidden}",  fill_height=True):
+
+            with gr.Blocks():
                 with gr.Tab("Chat"):
                     async def predict(message, history):
                         global selected_groups
                         global mcp_servers
                         global temperature
+                        global top_p
                         global model
+                        global md_model
 
+                        files = []
                         # deal with multimodal textfield
-                        files = message["files"]
-                        message = str(message["text"])
+                        try:
+                            files = message["files"]
+                            message = str(message["text"])
+                        except:
+                            print("using regular message")
 
                         if len(files) > 0:
                             for file_path in files:
@@ -187,26 +210,118 @@ async def create_interface():
                                 file_extension = os.path.splitext(file_path)[1]
                                 print(f"File Extension: {file_extension}")
 
-                                content = ""
-                                if file_extension == ".pdf":
-                                    content = LoadersFactory().pdf(file_path)
-                                elif file_extension == ".csv":
-                                    content = LoadersFactory().csv(file_path)
-                                elif file_extension == ".xlsx":
-                                    content = LoadersFactory().xlsx(file_path)
-                                elif file_extension == ".md":
-                                    content = LoadersFactory().markdown(file_path)
-                                # todo add more sources
+                                if file_extension == ".wav":
+                                    # Import the necessary libraries
+                                    from faster_whisper import WhisperModel
 
-                                markdown = LoadersFactory().convert_documents_to_markdown(content)
-                                print(markdown)
-                                message += "\n\n" + markdown
+                                    model_size = "base"
+
+
+                                    # Run on GPU with FP16
+                                    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+                                    # or run on GPU with INT8
+                                    # model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+                                    # or run on CPU with INT8
+                                    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+
+                                    segments, info = whisper_model.transcribe(file_path, beam_size=5)
+
+                                    print("Detected language '%s' with probability %f" % (
+                                    info.language, info.language_probability))
+
+                                    for segment in segments:
+                                        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+                                        message +=  segment.text + "\n"
+
+                                    message = message.rstrip("\n")
+
+                                elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
+                                    import moondream as md
+                                    from PIL import Image
+
+                                    #todo check if model exists, download on demand. make model selectable.
+                                    if md_model is None:
+                                        #md_model = md.vl(model="./clients/Gradio/models/moondream-0_5b-int8.mf")
+
+                                        # URL of the zip file
+                                        zip_url = 'https://huggingface.co/vikhyatk/moondream2/resolve/9dddae84d54db4ac56fe37817aeaeb502ed083e2/moondream-2b-int8.mf.gz?download=true'
+
+                                        # Folder to extract into
+                                        extract_to = './clients/Gradio/models'
+
+                                        # Target file to check
+                                        target_file = os.path.join(extract_to, 'moondream-2b-int8.mf')
+
+                                        # Only proceed if the target file doesn't exist
+                                        if not os.path.exists(target_file):
+                                            print("moondream-2b-int8.mf not found. Downloading and extracting...")
+                                            # Make sure the extraction folder exists
+                                            os.makedirs(extract_to, exist_ok=True)
+
+                                            # Download the zip
+                                            response = requests.get(zip_url)
+                                            response.raise_for_status()
+
+                                            # Extract it
+                                            # Decompress and write the file
+                                            with gzip.open(io.BytesIO(response.content), 'rb') as f_in:
+                                                with open(target_file, 'wb') as f_out:
+                                                    f_out.write(f_in.read())
+
+                                            print(f"Done! Extracted to: {extract_to}")
+
+                                        md_model = md.vl(model="./clients/Gradio/models/moondream-2b-int8.mf")
+                                    yield [{"role": "assistant",
+                                            "content": "Processing Image..",
+                                            "metadata": {"title": f"🛠️ Processing image",
+                                                         "status": "pending"}
+                                            }]
+                                    # Load and process image
+                                    image = Image.open(file_path)
+                                    encoded_image = md_model.encode_image(image)
+
+                                    # Generate caption
+                                    #caption = model.caption(encoded_image)["caption"]
+                                    #print("Caption:", caption)
+
+                                    # Ask questions
+                                    result = md_model.query(encoded_image, message)["answer"]
+                                    print("Answer:", result)
+                                    result = [{"role": "assistant",
+                                               "content": str(result)
+                                               }
+                                              ]
+
+                                    yield  result
+
+                                    return
+
+
+
+
+                                else:
+
+                                    content = ""
+                                    if file_extension == ".pdf":
+                                        content = LoadersFactory().pdf(file_path)
+                                    elif file_extension == ".csv":
+                                        content = LoadersFactory().csv(file_path)
+                                    elif file_extension == ".xlsx":
+                                        content = LoadersFactory().xlsx(file_path)
+                                    elif file_extension == ".md":
+                                        content = LoadersFactory().markdown(file_path)
+                                    # todo add more sources
+
+                                    markdown = LoadersFactory().convert_documents_to_markdown(content)
+                                    print(markdown)
+                                    message += "\n\n" + markdown
 
 
                         history_openai_format = []
                         tools = []
                         # only add mcp servers when we don't have a file attached for now.
-                        if len(files) == 0:
+                        if len(files) == 0  or len(files) == 1 and os.path.splitext(files[0])[1] == ".wav":
                             for mcp_server, mcptools in mcp_servers:
                                 for tool in mcptools:
                                     tools.append(tool)
@@ -218,7 +333,7 @@ async def create_interface():
                             # If we don't use a group, we use vllm directly.
 
                             # only make the mcp prompt when we don't have a file attached
-                            if len(files) == 0:
+                            if len(files) == 0 or len(files) == 1 and os.path.splitext(files[0])[1] == ".wav":
                                 system_prompt = generate_system_prompt(tools)
 
                             else:
@@ -243,10 +358,12 @@ async def create_interface():
                                 http_client=httpx.Client(verify=False)
                             )
 
+
                             completion = client.chat.completions.create(
                                 model=model,
                                 messages=history_openai_format,
                                 temperature=temperature,
+                                top_p=top_p,
                                 tools = tools or None,
                                 stream=False
                             )
@@ -268,6 +385,7 @@ async def create_interface():
                                         model=model,
                                         messages=history_openai_format,
                                         temperature=temperature,
+                                        top_p=top_p,
                                         tools=tools or None,
                                         stream=False
                                     )
@@ -384,6 +502,7 @@ async def create_interface():
                                                 model=model,
                                                 messages=history_openai_format,
                                                 temperature=temperature,
+                                                top_p=top_p,
                                                 stream=False
                                             )
 
@@ -479,7 +598,6 @@ async def create_interface():
 
                             yield result
 
-
                     async def call_tool(mcp_server, tool_name, tool_args) -> json:
                         print("starting to call the tool")
 
@@ -531,9 +649,10 @@ async def create_interface():
                     groupslist.change(change_group, groupslist, None)
 
                     chatbot = gr.Chatbot(
+                                        height="60vh",
                                         show_label=False,
-                                          type="messages",
-                                          avatar_images=(
+                                        type="messages",
+                                        avatar_images=(
                                               None,
                                               "./clients/Gradio/logos/Logo_dark.svg"
                                           ),
@@ -542,17 +661,18 @@ async def create_interface():
                     gr.ChatInterface(predict,
                                      chatbot=chatbot,
                                      type="messages",
-                                     textbox=gr.MultimodalTextbox(placeholder="Ask me a question", container=True, scale=7, sources=["upload"]),
-                                     theme="ocean",
+                                     textbox=gr.MultimodalTextbox(placeholder="Ask me a question", autofocus=True, container=True, scale=7, sources=["upload", "microphone"]),
                                      examples=["Hello", "Write a Python function that counts all numbers from 1 to 10",
                                                "How is the weather today in Munich?"],
                                      cache_examples=False
+
 
                     )
                     show_btn = gr.Button("Chat Settings")
 
                 with Modal(visible=False) as modal:
                     global temperature
+                    global top_p
 
 
 
@@ -568,10 +688,24 @@ async def create_interface():
                         except:
                             error_message = gr.Warning("Not a valid entry")
 
+                    def change_top_p(value):
+                        global top_p
+                        try:
+                            val = float(value)
+                            if isinstance(val, float):
+                                if 0.0 <= val <= 1.0:
+                                    top_p = float(value)
+                                    success_message = gr.Success("New top_p value saved")
+                        except:
+                            error_message = gr.Warning("Not a valid entry")
+
 
 
                     temperature_input = gr.Textbox(label="Temperature", placeholder=str(temperature))
                     temperature_input.change(change_temperature, temperature_input)
+
+                    top_p_input = gr.Textbox(label="Top_p", placeholder=str(top_p))
+                    top_p_input.change(change_top_p, top_p_input)
 
 
 

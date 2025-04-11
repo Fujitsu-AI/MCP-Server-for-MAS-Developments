@@ -1,4 +1,6 @@
-gradio
-gradio_modal
+gradio==5.24.0
+gradio_modal==1.8.0
 openai
 mcp
+faster-whisper
+moondream==0.0.5
