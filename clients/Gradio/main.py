@@ -3,11 +3,17 @@ import gzip
 import io
 import json
 import os
+import random
+import shutil
+import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 import gradio as gr
 import httpx
+import numpy as np
+import pandas as pd
 import requests
 from gradio_modal import Modal
 from openai import OpenAI
@@ -63,7 +69,7 @@ selected_groups = []
 pgpt = None
 
 # Function to handle login logic
-async def login(username, password, selected_options):
+async def login(username, password, selected_options, selected_options2):
     global pgpt
     config.set_value("email", username)
     config.set_value("password", password)
@@ -71,10 +77,58 @@ async def login(username, password, selected_options):
     if pgpt.logged_in:
         # Successful login
         groups = pgpt.list_personal_groups()
-        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value=None)
+        return gr.update(visible=False), gr.update(visible=True), "", gr.update(choices=groups, value=None), gr.update(choices=groups, value=None)
     else:
         gr.Warning("Error connecting.")
-        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None)
+        return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None), gr.update(choices=[], value=None)
+
+
+
+MAX_ITEMS = 200  # Max number of sources
+
+
+
+
+def delete_source(sources, index):
+    if 0 <= index < len(sources):
+        source_to_delete = sources[index]
+        print(source_to_delete)
+        status = pgpt.delete_source(source_to_delete["id"])
+        if status == "success":
+            gr.Success("Entry deleted")
+        else:
+            gr.Error("Failed")
+        sources.pop(index)
+
+    return sources
+
+def render_ui(sources):
+    updates = []
+    for i in range(MAX_ITEMS):
+        if i < len(sources):
+            src = sources[i]
+            updates.extend([
+                gr.update(visible=True),                # Row visible
+                gr.update(value=src["name"]),           # Name
+                gr.update(value="\n".join(src["groups"])),         # Groups
+                gr.update(value=src["creator"]),        # Creator
+                gr.update(value=src["date"]),           # Date
+                gr.update(value=src["status"]),         # Status
+                gr.update(visible=True),                # Delete button visible
+            ])
+        else:
+            updates.extend([
+                gr.update(visible=False),
+                gr.update(value=""),
+                gr.update(value=""),
+                gr.update(value=""),
+                gr.update(value=""),
+                gr.update(value="Draft"),
+                gr.update(visible=False),
+            ])
+    return updates
+
+
 
 
 
@@ -120,13 +174,87 @@ async def init_mcp_stdio(mcp_config, server_names):
 def show_image(img):
     return img
 
+def transcribe_whisper(file_path):
+    from faster_whisper import WhisperModel
+
+    model_size = "base"
+
+    # Run on GPU with FP16
+    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
+
+    # or run on GPU with INT8
+    # model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
+    # or run on CPU with INT8
+    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
+
+    segments, info = whisper_model.transcribe(file_path, beam_size=5)
+
+    print("Detected language '%s' with probability %f" % (
+        info.language, info.language_probability))
+    message = ""
+    for segment in segments:
+        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+        message += segment.text + "\n"
+
+    return message.rstrip("\n")
+
+def process_image(message, file_path):
+    import moondream as md
+    from PIL import Image
+    global md_model
+
+    # todo check if model exists, download on demand. make model selectable.
+    if md_model is None:
+        # md_model = md.vl(model="./clients/Gradio/models/moondream-0_5b-int8.mf")
+
+        # URL of the zip file
+        zip_url = 'https://huggingface.co/vikhyatk/moondream2/resolve/9dddae84d54db4ac56fe37817aeaeb502ed083e2/moondream-2b-int8.mf.gz?download=true'
+
+        # Folder to extract into
+        extract_to = './clients/Gradio/models'
+
+        # Target file to check
+        target_file = os.path.join(extract_to, 'moondream-2b-int8.mf')
+
+        # Only proceed if the target file doesn't exist
+        if not os.path.exists(target_file):
+            print("moondream-2b-int8.mf not found. Downloading and extracting...")
+            # Make sure the extraction folder exists
+            os.makedirs(extract_to, exist_ok=True)
+
+            # Download the zip
+            response = requests.get(zip_url)
+            response.raise_for_status()
+
+            # Extract it
+            # Decompress and write the file
+            with gzip.open(io.BytesIO(response.content), 'rb') as f_in:
+                with open(target_file, 'wb') as f_out:
+                    f_out.write(f_in.read())
+
+            print(f"Done! Extracted to: {extract_to}")
+
+        md_model = md.vl(model="./clients/Gradio/models/moondream-2b-int8.mf")
+
+    # Load and process image
+    image = Image.open(file_path)
+    encoded_image = md_model.encode_image(image)
+
+    # Generate caption
+    # caption = model.caption(encoded_image)["caption"]
+    # print("Caption:", caption)
+
+    # Ask questions
+    result = md_model.query(encoded_image, message)["answer"]
+    print("Answer:", result)
+    return result
+
 
 async def create_interface():
     theme = gr.themes.Default(primary_hue="blue").set(
         loader_color="#FF0000",
         slider_color="#FF0000",
     )
-
     with (gr.Blocks(theme="ocean",
                    title="PrivateGPT MCP Multi-API Demo",
                    fill_height=True,
@@ -140,6 +268,8 @@ async def create_interface():
         login_message = gr.Markdown("")
 
         await init_mcp_stdio(mcp_config=mcp_config, server_names=server_names)
+
+
 
         with gr.Group() as login_interface:
             # Store/Save credentials in browser
@@ -185,7 +315,7 @@ async def create_interface():
         # Dashboard UI Elements
         with gr.Group(visible=False) as dashboard_interface:
 
-            with gr.Blocks():
+            with gr.Blocks() as main:
                 with gr.Tab("Chat"):
                     async def predict(message, history):
                         global selected_groups
@@ -211,94 +341,14 @@ async def create_interface():
                                 print(f"File Extension: {file_extension}")
 
                                 if file_extension == ".wav":
-                                    # Import the necessary libraries
-                                    from faster_whisper import WhisperModel
-
-                                    model_size = "base"
-
-
-                                    # Run on GPU with FP16
-                                    # model = WhisperModel(model_size, device="cuda", compute_type="float16")
-
-                                    # or run on GPU with INT8
-                                    # model = WhisperModel(model_size, device="cuda", compute_type="int8_float16")
-                                    # or run on CPU with INT8
-                                    whisper_model = WhisperModel(model_size, device="cpu", compute_type="int8")
-
-                                    segments, info = whisper_model.transcribe(file_path, beam_size=5)
-
-                                    print("Detected language '%s' with probability %f" % (
-                                    info.language, info.language_probability))
-
-                                    for segment in segments:
-                                        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
-                                        message +=  segment.text + "\n"
-
-                                    message = message.rstrip("\n")
+                                   message = transcribe_whisper(file_path)
 
                                 elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
-                                    import moondream as md
-                                    from PIL import Image
 
-                                    #todo check if model exists, download on demand. make model selectable.
-                                    if md_model is None:
-                                        #md_model = md.vl(model="./clients/Gradio/models/moondream-0_5b-int8.mf")
-
-                                        # URL of the zip file
-                                        zip_url = 'https://huggingface.co/vikhyatk/moondream2/resolve/9dddae84d54db4ac56fe37817aeaeb502ed083e2/moondream-2b-int8.mf.gz?download=true'
-
-                                        # Folder to extract into
-                                        extract_to = './clients/Gradio/models'
-
-                                        # Target file to check
-                                        target_file = os.path.join(extract_to, 'moondream-2b-int8.mf')
-
-                                        # Only proceed if the target file doesn't exist
-                                        if not os.path.exists(target_file):
-                                            print("moondream-2b-int8.mf not found. Downloading and extracting...")
-                                            # Make sure the extraction folder exists
-                                            os.makedirs(extract_to, exist_ok=True)
-
-                                            # Download the zip
-                                            response = requests.get(zip_url)
-                                            response.raise_for_status()
-
-                                            # Extract it
-                                            # Decompress and write the file
-                                            with gzip.open(io.BytesIO(response.content), 'rb') as f_in:
-                                                with open(target_file, 'wb') as f_out:
-                                                    f_out.write(f_in.read())
-
-                                            print(f"Done! Extracted to: {extract_to}")
-
-                                        md_model = md.vl(model="./clients/Gradio/models/moondream-2b-int8.mf")
-                                    yield [{"role": "assistant",
-                                            "content": "Processing Image..",
-                                            "metadata": {"title": f"🛠️ Processing image",
-                                                         "status": "pending"}
-                                            }]
-                                    # Load and process image
-                                    image = Image.open(file_path)
-                                    encoded_image = md_model.encode_image(image)
-
-                                    # Generate caption
-                                    #caption = model.caption(encoded_image)["caption"]
-                                    #print("Caption:", caption)
-
-                                    # Ask questions
-                                    result = md_model.query(encoded_image, message)["answer"]
-                                    print("Answer:", result)
-                                    result = [{"role": "assistant",
-                                               "content": str(result)
-                                               }
-                                              ]
-
-                                    yield  result
-
+                                    result = process_image(message, file_path)
+                                    result = [{"role": "assistant", "content": str(result)}]
+                                    yield result
                                     return
-
-
-
 
                                 else:
 
@@ -571,13 +621,11 @@ async def create_interface():
                                 await asyncio.sleep(0.05)
                                 yield partial_message
 
-                            sources = "\n\nSources:\n"
-
                             citations = []
                             for source in response["sources"]:
                                 document_info = pgpt.get_document_info(source["documentId"])
 
-                                citations.append(document_info["data"]["title"] +
+                                citations.append(document_info["title"] +
                                                  #" Page: " + str(source["page"] + 1) +
                                                  "\n" + str(source["context"]).replace("#", "") + "\n\n")
                             result = [{"role": "assistant",
@@ -669,6 +717,156 @@ async def create_interface():
 
                     )
                     show_btn = gr.Button("Chat Settings")
+                with gr.Tab("Sources"):
+
+
+                    def upload_file(file, sources):
+                        global pgpt
+                        global selected_groups
+                        global default_groups
+                        UPLOAD_FOLDER = "./data"
+
+                        if len(selected_groups) == 0:
+                            gr.Warning("Select at least one group, source was not added")
+                            return sources
+
+                        if not os.path.exists(UPLOAD_FOLDER):
+                            os.mkdir(UPLOAD_FOLDER)
+                        shutil.copy(file, UPLOAD_FOLDER)
+                        print()
+                        file_path = os.path.join(UPLOAD_FOLDER, file)
+
+
+                        file_extension = os.path.splitext(file_path)[1]
+                        print(f"File Extension: {file_extension}")
+
+
+                        if file_extension == ".wav":
+                            markdown = transcribe_whisper(file_path)
+
+                        elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
+                            markdown = process_image("Caption this image", file_path)
+
+                        else:
+                            content = ""
+                            if file_extension == ".pdf":
+                                content = LoadersFactory().pdf(file_path)
+                            elif file_extension == ".csv":
+                                content = LoadersFactory().csv(file_path)
+                            elif file_extension == ".xlsx":
+                                content = LoadersFactory().xlsx(file_path)
+                            elif file_extension == ".md":
+                                content = LoadersFactory().markdown(file_path)
+                            # todo add more sources
+
+                            markdown = LoadersFactory().convert_documents_to_markdown(content)
+                            print(markdown)
+
+                            
+                        if os.path.exists(file_path):
+                            os.remove(file_path)
+                            print("File deleted successfully.")
+                        else:
+                            print("File does not exist.")
+
+
+                        gr.Info("Processing, please wait...")
+
+
+                        if pgpt is not None:
+                            print(pgpt.base_url)
+                            filepath = Path(file_path)
+                            file_name = filepath.name
+                            answer =  pgpt.add_source(markdown, selected_groups, file_name)
+                            print(str(answer["documentId"]))
+                            document_info = pgpt.get_document_info(answer["documentId"])
+                            #gr.Info("Added:" + str(document_info))
+                            dt = datetime.fromisoformat(document_info["createdAt"])
+                            # Format to human-readable string
+                            human_readable = dt.strftime("%A, %B %d, %Y  %I:%M %p %Z")
+
+                            if len(sources) < MAX_ITEMS:
+                                sources.append({"name": document_info["title"], "creator": document_info["creator"]["name"], "date": human_readable, "status": document_info["state"], "groups": document_info["groups"], "id": document_info["sourceId"]})
+                            return sources
+
+
+
+
+                    gr.Markdown("## 📚 PrivateGPT Sources")
+
+                    groupslist2 = gr.CheckboxGroup(choices=[], label="Groups")
+                    groupslist2.change(change_group, groupslist2, None)
+
+                    upload_button = gr.UploadButton("➕ Add Source")
+
+
+
+                    MAX_ITEMS = 200  # Max number of sources
+
+
+                    sources_state = gr.State([])  # Start with an empty state
+
+                    rows = []
+
+                    # Create rows for each source
+                    for i in range(MAX_ITEMS):
+                        with gr.Row(visible=False) as row:  # Initially invisible
+                            name = gr.Text(value="", label="Name", interactive=False, show_label=False)  # Read-only field
+                            groups = gr.Text(value="", label="Groups", interactive=False,
+                                              show_label=False)  # Read-only field
+                            creator = gr.Text(value="", label="Creator", interactive=False,  show_label=False)  # Read-only field
+                            date = gr.Text(value="", label="Date", interactive=False,  show_label=False)  # Read-only field
+                            status = gr.Text(value="", label="Status",  show_label=False)  # Label for status
+                            delete_btn = gr.Button("🗑️", scale=0)
+                            rows.append((row, name, groups, creator, date, status, delete_btn))
+
+                            # Delete handler
+                            delete_btn.click(delete_source, inputs=[sources_state, gr.State(i)],
+                                             outputs=[sources_state])
+
+                    # Add source button
+                    #upload_button.click(add_source, inputs=[sources_state], outputs=[sources_state])
+                    upload_button.upload(upload_file, inputs=[upload_button, sources_state], outputs=sources_state)
+
+                    # Auto re-render UI when sources change
+                    sources_state.change(
+                        render_ui,
+                        inputs=[sources_state],
+                        outputs=[comp for row in rows for comp in row]
+                    )
+
+                    # Fetch sources from "API" and initialize the UI with them
+                    def load_sources():
+                        #todo that's ugly.
+                        while pgpt is None:
+                            time.sleep(2)
+                        groups = pgpt.list_personal_groups()
+                        print(groups)
+
+                        sources = []
+                        for group in groups:
+                            group_sources = pgpt.get_sources_from_group(group)
+                            for entry in group_sources:
+                                sources.append(entry)
+
+                        final = []
+                        for source in sources:
+                            print(source)
+                            dt = datetime.fromisoformat(source["createdAt"])
+                            # Format to human-readable string
+                            human_readable = dt.strftime("%A, %B %d, %Y  %I:%M %p %Z")
+                            final.append({"name": source["title"], "creator": source["creator"]["name"], "date": human_readable, "status": source["state"], "groups": source["groups"], "id": source["sourceId"]})
+
+                        return final
+
+                    #load_data()
+
+                    # Trigger data fetching and rendering on app load
+
+                    main.load(load_sources, outputs=[sources_state])
+
+
+
 
                 with Modal(visible=False) as modal:
                     global temperature
@@ -713,58 +911,18 @@ async def create_interface():
                 show_btn.click(lambda: Modal(visible=True), None, modal)
                 # todo add management of sources, users etc later.
 
-                #with gr.Tab("Sources"):
-                #    gr.Markdown("Test function, not working.")
 
-                #    def upload_file(file):
-                #        UPLOAD_FOLDER = "./data"
-                #        if not os.path.exists(UPLOAD_FOLDER):
-                #            os.mkdir(UPLOAD_FOLDER)
-                #        shutil.copy(file, UPLOAD_FOLDER)
-                #        gr.Info("File Uploaded!!!")
+            #with gr.Tab("Users"):
+                # Initial data source
+            #    gr.Markdown("Test function, not working.")
+                # TODO Api.. how do we get users?
 
-                #    upload_button = gr.UploadButton("Click to Upload a File")
-                #    upload_button.upload(upload_file, upload_button)
-
-                #with gr.Tab("Users"):
-                    # Initial data source
-                #    gr.Markdown("Test function, not working.")
-                    # TODO Api.. how do we get users?
-
-                    # Function to remove selected option from the dropdown
-                #    def remove_option(selected_option, options):
-                #        if selected_option in options:
-                #            options.remove(selected_option)
-                #        return options, gr.update(choices=options, value=None)  # Reset selection
-
-                    # Function to update the options by removing the selected ones
-               #     def update_options(selected_options):
-               #         global user_data_source
-               #         # Filter out selected options
-               #         user_data_source = [option for option in user_data_source if option not in selected_options]
-               #         # TODO delete others from db
-               #        for element in selected_options:
-               #             print("todo: delete from db")
-               #         selected_options = []
-
-               #         return gr.update(choices=user_data_source, value=None)  # Return the updated choices
-
-                    # Gradio Interface: Create blocks to lay out components
-                #    with gr.Blocks() as demo2:
-                #        global user_data_source
-
-                        # Define a CheckboxGroup which we may need to dynamically update
-                #        checkbox = gr.CheckboxGroup(choices=user_data_source, label="Options")
-                #        remove_button = gr.Button("Remove User")
-
-                        # Connect button click to update function, modifying the choices in CheckboxGroup
-                #        remove_button.click(fn=update_options, inputs=checkbox, outputs=checkbox)
 
         # Connect button to function and update components accordingly
         login_button.click(
             fn=login,
-            inputs=[username_input, password_input, groupslist],
-            outputs=[login_interface, dashboard_interface, login_message, groupslist]
+            inputs=[username_input, password_input, groupslist, groupslist2],
+            outputs=[login_interface, dashboard_interface, login_message, groupslist, groupslist2]
         )
 
     demo.launch(favicon_path="./clients/Gradio/favicon.ico")

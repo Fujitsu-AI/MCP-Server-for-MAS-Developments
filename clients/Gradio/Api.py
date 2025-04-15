@@ -154,7 +154,7 @@ class PrivateGPTAPI:
             return []
 
     def get_document_info(self, id):
-        url = f"{self.base_url}/sources/{id}"
+        url = f"{self.base_url}/sources/{id }"
         try:
             resp = self.session.get(url)
             j = json.loads(resp.content)
@@ -208,15 +208,74 @@ class PrivateGPTAPI:
                 print(f"❌ Failed to get response: {e}")
                 return {"error": f"❌ Failed to get response: {e}"}
 
-    def get_document_info(self, source_id):
+
+    def add_source(self, markdown, groups, name):
+        """Send a source id to retrieve details. Working with version 1.3.3 and newer"""
+        url = f"{self.base_url}/sources"
+        try:
+
+            payload = {
+                "name": name,
+                "groups": groups,
+                "content": markdown
+            }
+
+            resp = self.session.post(url, json=payload)
+            j = json.loads(resp.content)
+            data_block = j["data"]
+            if not data_block:
+                return []
+
+            return data_block
+
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to get response: {e}")
+            return {"error": f"❌ Failed to get response: {e}"}
+
+    def delete_source(self, source_id):
         """Send a source id to retrieve details. Working with version 1.3.3 and newer"""
         url = f"{self.base_url}/sources/{source_id}"
         try:
-            response = self.session.get(url)
-            data = response.json()
-            info = data.get('data', {})
-            print(f"💡 Response: {str(info)}")
-            return data
+
+            resp = self.session.delete(url)
+            j = json.loads(resp.content)
+            message = j["message"]
+            if not message:
+                return "failed"
+
+            return message
+
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to get response: {e}")
+            return {"error": f"❌ Failed to get response: {e}"}
+
+
+    def get_sources_from_group(self, group):
+        """Send a source id to retrieve details. Working with version 1.3.3 and newer"""
+        url = f"{self.base_url}/sources/groups"
+        try:
+
+            payload = {
+                "groupName": group
+            }
+
+            resp = self.session.post(url, json=payload)
+            j = json.loads(resp.content)
+            data_block = j["data"]
+            if not data_block:
+                return []
+
+            sources = []
+            for source in data_block["sources"]:
+                doc = self.get_document_info(source)
+                sources.append(doc)
+
+
+            return sources
+
+
         except requests.exceptions.RequestException as e:
             print(f"❌ Failed to get response: {e}")
             return {"error": f"❌ Failed to get response: {e}"}
