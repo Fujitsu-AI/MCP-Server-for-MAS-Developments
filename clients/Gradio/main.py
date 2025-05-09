@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import gzip
 import io
 import json
@@ -15,6 +16,7 @@ import httpx
 import numpy as np
 import pandas as pd
 import requests
+from gradio import FileData
 from gradio_modal import Modal
 from openai import OpenAI
 
@@ -32,9 +34,9 @@ from clients.Gradio.transport.stdio.stdio_client import stdio_client
 mcp_config = "./clients/Gradio/server_config.json"
 
 #selection of mcp servers from the config
-server_names = ["demo-tools", "filesystem", "sqlite"]
+server_names = ["demo-tools", "filesystem", "sqlite", "nostr", "fetch", "flux"]
 # if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
-all_mcp_servers = True
+all_mcp_servers = False
 
 temperature = 0.8
 top_p = 0.8
@@ -333,6 +335,7 @@ async def create_interface():
                         except:
                             print("using regular message")
 
+
                         if len(files) > 0:
                             for file_path in files:
                                 print(file_path)
@@ -430,7 +433,17 @@ async def create_interface():
                             if result.content is not None or other_weird_stuff.startswith('```'):
                                 if result.content.startswith("[TOOL_CALLS]") or other_weird_stuff.startswith("```") :
                                     print("entering TOOL_CALLS")
-                                    history_openai_format = [{"role": "user", "content": message}]
+                                    time.ctime()  # 'Mon Oct 18 13:35:29 2010'
+                                    current_timestamp = time.time()
+                                    formatted_timestamp = time.strftime("%Y-%m-%d %H:%M:%S",
+                                                                        time.localtime(current_timestamp))
+                                    system_prompt = " This is the CURRENT DATE: " + formatted_timestamp
+
+                                    history_openai_format = [{"role": "system", "content": system_prompt},
+                                                             {"role": "user", "content": message}]
+
+
+                                    #history_openai_format = [{"role": "user", "content": message}]
                                     completion = client.chat.completions.create(
                                         model=model,
                                         messages=history_openai_format,
@@ -538,35 +551,97 @@ async def create_interface():
                                             )
 
                                             # Continue conversation with tool results
-                                            if len(content)> 0 and content[0].get("text") is not None:
-                                                history_openai_format.append(
-                                                    {
-                                                        "role": "tool",
-                                                        "name": tool_name,
-                                                        "content": content[0].get("text"),
-                                                        "tool_call_id": tool_call_id,
-                                                    }
-                                                )
 
-                                            response = client.chat.completions.create(
-                                                model=model,
-                                                messages=history_openai_format,
-                                                temperature=temperature,
-                                                top_p=top_p,
-                                                stream=False
-                                            )
+                                            if  len(content)> 0 and content[0].get("type") == "text" and content[0].get("text") is not None:
 
-                                            partial_mes = ""
-                                            #history.append({"role": "assistant", "content": "I called a tool",
-                                            #                     "metadata": {"title": f"🛠️ Used tool {"Test"}"}})
-                                            tokens = clean_response(response.choices[0].message.content).split(" ")
-                                            for i, token in enumerate(tokens):
-                                                partial_mes = partial_mes + token + " "
-                                                await asyncio.sleep(0.05)
-                                                yield partial_mes
-                                            #history.append({"role": "assistant", "content": clean_response(response.choices[0].message.content)})
+                                                #temporary workaround, move to image instead of text
+                                                content = content[0].get("text")
+                                                isimagejson = False
+                                                j = None
+                                                try:
+                                                    j = json.loads(content)
+                                                    if j.get("type") == "image":
+                                                        isimagejson = True
+                                                except:
+                                                    isimagejson = False
 
-                                            yield [
+                                                if isimagejson:
+
+                                                    yield  [
+                                                        {
+                                                            "role": "assistant",
+                                                            "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                            "tool_calls": [tool_name],
+                                                            "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                         "status": "done"}
+                                                        },
+                                                        {
+                                                            "role": "assistant",
+                                                            "content":  f"{j.get("message")}:\n![Image Description]({j.get("url")})"
+                                                        }
+
+                                                    ]
+
+                                                else:
+
+                                                    history_openai_format.append(
+                                                        {
+                                                            "role": "tool",
+                                                            "name": tool_name,
+                                                            "content": content,
+                                                            "tool_call_id": tool_call_id,
+                                                        }
+                                                    )
+
+                                                    response = client.chat.completions.create(
+                                                        model=model,
+                                                        messages=history_openai_format,
+                                                        temperature=temperature,
+                                                        top_p=top_p,
+                                                        stream=False
+                                                    )
+
+                                                    partial_mes = ""
+                                                    #history.append({"role": "assistant", "content": "I called a tool",
+                                                    #                     "metadata": {"title": f"🛠️ Used tool {"Test"}"}})
+                                                    tokens = clean_response(response.choices[0].message.content).split(" ")
+                                                    for i, token in enumerate(tokens):
+                                                        partial_mes = partial_mes + token + " "
+                                                        await asyncio.sleep(0.05)
+                                                        yield partial_mes
+                                                    #history.append({"role": "assistant", "content": clean_response(response.choices[0].message.content)})
+
+                                                    yield [
+                                                            {
+                                                                "role": "assistant",
+                                                                "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                                "tool_calls": [tool_name],
+                                                                "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                             "status": "done"}
+                                                            },
+                                                            {
+                                                                "role": "assistant",
+                                                                "content": clean_response(response.choices[0].message.content)
+                                                            },
+
+
+                                                        ]
+
+                                                    break
+                                            elif len(content)> 0 and content[0].get("type") == "image":
+                                                base64_string = content[0].get("data")
+
+                                                # Decode base64 to bytes
+                                                image_data = base64.b64decode(base64_string)
+                                                from PIL import Image
+                                                # Convert to PIL Image
+                                                image = Image.open(io.BytesIO(image_data))
+
+                                                image.save("test.jpg")
+                                                #response = requests.get(j.get("url"), verify=False)
+                                                #image = Image.open(io.BytesIO(response.content)).convert("RGB")
+                                                #image.save("image.jpg")
+                                                yield [
                                                     {
                                                         "role": "assistant",
                                                         "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
@@ -576,13 +651,11 @@ async def create_interface():
                                                     },
                                                     {
                                                         "role": "assistant",
-                                                        "content": clean_response(response.choices[0].message.content)
-                                                    },
-
+                                                        "content": f"![Image Description]({"test.jpg"})"
+                                                    }
 
                                                 ]
 
-                                            break
 
                             else:
                                 partial_mes = ""
@@ -915,7 +988,7 @@ async def create_interface():
             #with gr.Tab("Users"):
                 # Initial data source
             #    gr.Markdown("Test function, not working.")
-                # TODO Api.. how do we get users?
+                # TODO Api.
 
 
         # Connect button to function and update components accordingly
@@ -926,7 +999,6 @@ async def create_interface():
         )
 
     demo.launch(favicon_path="./clients/Gradio/favicon.ico")
-
 
 
 asyncio.run(create_interface())
