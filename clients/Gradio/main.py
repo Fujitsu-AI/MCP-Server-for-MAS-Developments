@@ -162,7 +162,7 @@ async def init_mcp_stdio(mcp_config, server_names):
                     except Exception as e:
                         print(e)
 
-                mcp_servers.append((mcp_client, tools))
+                mcp_servers.append((mcp_client, tools, server_name))
             except Exception as e:
                 print(e)
 
@@ -375,7 +375,7 @@ async def create_interface():
                         tools = []
                         # only add mcp servers when we don't have a file attached for now.
                         if len(files) == 0  or len(files) == 1 and os.path.splitext(files[0])[1] == ".wav":
-                            for mcp_server, mcptools in mcp_servers:
+                            for mcp_server, mcptools, mcpname in mcp_servers:
                                 for tool in mcptools:
                                     tools.append(tool)
 
@@ -518,7 +518,7 @@ async def create_interface():
 
                                     ]
 
-                                    for mcp_server, tools in mcp_servers:
+                                    for mcp_server, tools, name in mcp_servers:
                                         if tool_name in str(tools): #todo: better check
                                             print(tool_name + " in tools")
 
@@ -789,7 +789,9 @@ async def create_interface():
 
 
                     )
-                    show_btn = gr.Button("Chat Settings")
+                    with gr.Row():
+                        show_btn = gr.Button("Chat Settings")
+                        show_btn2 = gr.Button("MCP Tools")
                 with gr.Tab("Sources"):
 
 
@@ -941,7 +943,7 @@ async def create_interface():
 
 
 
-                with Modal(visible=False) as modal:
+                with Modal(visible=False) as modalsettings:
                     global temperature
                     global top_p
 
@@ -978,10 +980,27 @@ async def create_interface():
                     top_p_input = gr.Textbox(label="Top_p", placeholder=str(top_p))
                     top_p_input.change(change_top_p, top_p_input)
 
+                with Modal(visible=False) as modalmcp:
+                    global mcp_servers
+
+                    gr.Markdown("## 🛠️ Available MCP Tools")
+
+                    for mcp_server in mcp_servers:
+                        descr = ""
+                        lines = 1
+                        for tool in mcp_server[1]:
+                            descr += "Tool: " + tool["function"]["name"] + "\n" + "Description: " + tool["function"]["description"] + "\n\n"
+                            lines+=3
+
+
+                        gr.Textbox(descr, show_label=True, label=mcp_server[2], lines=lines)
 
 
 
-                show_btn.click(lambda: Modal(visible=True), None, modal)
+
+
+                show_btn.click(lambda: Modal(visible=True), None, modalsettings)
+                show_btn2.click(lambda: Modal(visible=True), None, modalmcp)
                 # todo add management of sources, users etc later.
 
 
