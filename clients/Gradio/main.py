@@ -16,6 +16,7 @@ import httpx
 import numpy as np
 import pandas as pd
 import requests
+from PIL.PngImagePlugin import PngImageFile
 from gradio import FileData
 from gradio_modal import Modal
 from openai import OpenAI
@@ -34,7 +35,7 @@ from clients.Gradio.transport.stdio.stdio_client import stdio_client
 mcp_config = "./clients/Gradio/server_config.json"
 
 #selection of mcp servers from the config
-server_names = ["demo-tools", "filesystem", "sqlite", "nostr", "fetch", "flux"]
+server_names = ["demo-tools", "filesystem", "sqlite", "nostr",  "agent_web_search", "hf_flux", "analyze_image"] #"google-calendar"] #
 # if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
 all_mcp_servers = False
 
@@ -347,11 +348,11 @@ async def create_interface():
                                    message = transcribe_whisper(file_path)
 
                                 elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
-
-                                    result = process_image(message, file_path)
-                                    result = [{"role": "assistant", "content": str(result)}]
-                                    yield result
-                                    return
+                                    message = "analyze this image: prompt: " + message + " filepath: " + file_path
+                                    #result = process_image(message, file_path)
+                                    #result = [{"role": "assistant", "content": str(result)}]
+                                    #yield result
+                                    #return
 
                                 else:
 
@@ -373,8 +374,11 @@ async def create_interface():
 
                         history_openai_format = []
                         tools = []
+                        file_extension = ""
+                        if len(files) > 0:
+                            file_extension = os.path.splitext(files[0])[1]
                         # only add mcp servers when we don't have a file attached for now.
-                        if len(files) == 0  or len(files) == 1 and os.path.splitext(files[0])[1] == ".wav":
+                        if len(files) == 0  or len(files) == 1 and (file_extension == ".wav" or  file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp"):
                             for mcp_server, mcptools, mcpname in mcp_servers:
                                 for tool in mcptools:
                                     tools.append(tool)
@@ -437,7 +441,7 @@ async def create_interface():
                                     current_timestamp = time.time()
                                     formatted_timestamp = time.strftime("%Y-%m-%d %H:%M:%S",
                                                                         time.localtime(current_timestamp))
-                                    system_prompt = " This is the CURRENT DATE: " + formatted_timestamp
+                                    system_prompt = "The timezone is Europe/Berlin. This is the CURRENT DATE: " + formatted_timestamp
 
                                     history_openai_format = [{"role": "system", "content": system_prompt},
                                                              {"role": "user", "content": message}]
@@ -555,6 +559,7 @@ async def create_interface():
                                             if  len(content)> 0 and content[0].get("type") == "text" and content[0].get("text") is not None:
 
                                                 #temporary workaround, move to image instead of text
+
                                                 content = content[0].get("text")
                                                 isimagejson = False
                                                 j = None
@@ -629,32 +634,63 @@ async def create_interface():
 
                                                     break
                                             elif len(content)> 0 and content[0].get("type") == "image":
-                                                base64_string = content[0].get("data")
+                                                try:
+                                                    base64_string = content[0].get("data")
+                                                    image_bytes = base64.b64decode(base64_string)
 
-                                                # Decode base64 to bytes
-                                                image_data = base64.b64decode(base64_string)
-                                                from PIL import Image
-                                                # Convert to PIL Image
-                                                image = Image.open(io.BytesIO(image_data))
+                                                    from PIL import Image as PilImage
+                                                    pil_image = PilImage.open(io.BytesIO(image_bytes))
 
-                                                image.save("test.jpg")
-                                                #response = requests.get(j.get("url"), verify=False)
-                                                #image = Image.open(io.BytesIO(response.content)).convert("RGB")
-                                                #image.save("image.jpg")
-                                                yield [
-                                                    {
-                                                        "role": "assistant",
-                                                        "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
-                                                        "tool_calls": [tool_name],
-                                                        "metadata": {"title": f"🛠️ Used tool {tool_name}",
-                                                                     "status": "done"}
-                                                    },
-                                                    {
-                                                        "role": "assistant",
-                                                        "content": f"![Image Description]({"test.jpg"})"
-                                                    }
+                                                    pil_image.save("test.jpg")
+                                                    fullpath = Path("test.jpg").absolute()
+                                                    print(fullpath)
 
-                                                ]
+
+                                                    yield [ {
+                                                            "role": "assistant",
+                                                            "content": "\n" + tool_message + "\n",
+                                                            "tool_calls": [tool_name],
+                                                            "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                         "status": "done"}
+                                                        },
+                                                        {
+                                                        "text": content[0].get("message"),
+                                                        "files" : [fullpath]
+                                                        }
+
+                                                    ]
+
+                                                    #yield [
+                                                    #    {
+                                                    #        "role": "assistant",
+                                                    #        "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                    #        "tool_calls": [tool_name],
+                                                    #        "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                    #                     "status": "done"}
+                                                    #    },
+                                                    #    {
+                                                    #        "role": "assistant",
+                                                    #        "content": f"![Image Description](file:///{fullpath})"
+                                                    #    }
+
+
+                                                    #]
+                                                except Exception as e:
+                                                    print(e)
+                                                    yield [
+                                                        {
+                                                            "role": "assistant",
+                                                            "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                            "tool_calls": [tool_name],
+                                                            "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                         "status": "done"}
+                                                        },
+                                                        {
+                                                            "role": "assistant",
+                                                            "content": "Error receiving an image"
+                                                        }
+
+                                                    ]
 
 
                             else:
@@ -820,7 +856,7 @@ async def create_interface():
                             markdown = transcribe_whisper(file_path)
 
                         elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
-                            markdown = process_image("Caption this image", file_path)
+                            markdown = process_image("Analyze this image", file_path)
 
                         else:
                             content = ""
