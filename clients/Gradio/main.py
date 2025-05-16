@@ -562,16 +562,18 @@ async def create_interface():
 
                                                 content = content[0].get("text")
                                                 isimagejson = False
+                                                isvideojson = False
                                                 j = None
                                                 try:
                                                     j = json.loads(content)
                                                     if j.get("type") == "image":
                                                         isimagejson = True
+                                                    elif  j.get("type") == "video":
+                                                        isvideojson = True
                                                 except:
                                                     isimagejson = False
 
                                                 if isimagejson:
-
                                                     yield  [
                                                         {
                                                             "role": "assistant",
@@ -584,6 +586,40 @@ async def create_interface():
                                                             "role": "assistant",
                                                             "content":  f"{j.get("message")}:\n![Image Description]({j.get("url")})"
                                                         }
+
+
+                                                    ]
+                                                elif isvideojson:
+                                                    html_content = f"""
+                                                    <!DOCTYPE html>
+                                                    <html>
+                                                    <head>
+                                                        <title>Video Preview</title>
+                                                    </head>
+                                                    <body>
+                                                        <video width="640" controls>
+                                                            <source src="{j.get("url")}" type="video/mp4">
+                                                            Your browser does not support the video tag.
+                                                        </video>
+                                                    </body>
+                                                    </html>
+                                                    """
+
+
+
+                                                    yield  [
+                                                        {
+                                                            "role": "assistant",
+                                                            "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
+                                                            "tool_calls": [tool_name],
+                                                            "metadata": {"title": f"🛠️ Used tool {tool_name}",
+                                                                         "status": "done"}
+                                                        },
+                                                        {
+                                                            "role": "assistant",
+                                                            "content":  html_content
+                                                        }
+
 
                                                     ]
 
