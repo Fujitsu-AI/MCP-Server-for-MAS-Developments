@@ -1,10 +1,8 @@
 import asyncio
 import base64
-import gzip
 import io
 import json
 import os
-import random
 import shutil
 import time
 import uuid
@@ -13,11 +11,7 @@ from pathlib import Path
 
 import gradio as gr
 import httpx
-import numpy as np
-import pandas as pd
-import requests
-from PIL.PngImagePlugin import PngImageFile
-from gradio import FileData
+from PIL import Image
 from gradio_modal import Modal
 from openai import OpenAI
 
@@ -35,14 +29,18 @@ from clients.Gradio.transport.stdio.stdio_client import stdio_client
 mcp_config = "./clients/Gradio/server_config.json"
 
 #selection of mcp servers from the config
-server_names = ["demo-tools", "filesystem", "sqlite", "nostr",  "agent_web_search", "hf_flux", "analyze_image"] #"google-calendar"] #
+server_names = ["dp"] #"demo-tools", "filesystem", "sqlite", "nostr",  "agent_web_search", "hf_flux", ] #"google-calendar"] #
 # if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
 all_mcp_servers = False
 
 temperature = 0.8
 top_p = 0.8
-model = "/models/mistral-nemo-12b"
+#model = "/models/mistral-nemo-12b" #vllm
+model = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
 md_model = None
+
+
+image_url = None
 
 
 
@@ -85,12 +83,7 @@ async def login(username, password, selected_options, selected_options2):
         gr.Warning("Error connecting.")
         return gr.update(), gr.update(visible=False), "Invalid credentials. Please try again.", gr.update(choices=[], value=None), gr.update(choices=[], value=None)
 
-
-
 MAX_ITEMS = 200  # Max number of sources
-
-
-
 
 def delete_source(sources, index):
     if 0 <= index < len(sources):
@@ -132,9 +125,6 @@ def render_ui(sources):
     return updates
 
 
-
-
-
 async def init_mcp_stdio(mcp_config, server_names):
     try:
         for server_name in server_names:
@@ -142,9 +132,6 @@ async def init_mcp_stdio(mcp_config, server_names):
             server_params = await load_config(mcp_config, server_name)
             try:
                 await mcp_client.connect_to_stdio_server(server_params, server_name)
-
-
-
                 response = await mcp_client.session.list_tools()
                 tools = []
                 for tool in response.tools:
@@ -201,58 +188,6 @@ def transcribe_whisper(file_path):
 
     return message.rstrip("\n")
 
-def process_image(message, file_path):
-    import moondream as md
-    from PIL import Image
-    global md_model
-
-    # todo check if model exists, download on demand. make model selectable.
-    if md_model is None:
-        # md_model = md.vl(model="./clients/Gradio/models/moondream-0_5b-int8.mf")
-
-        # URL of the zip file
-        zip_url = 'https://huggingface.co/vikhyatk/moondream2/resolve/9dddae84d54db4ac56fe37817aeaeb502ed083e2/moondream-2b-int8.mf.gz?download=true'
-
-        # Folder to extract into
-        extract_to = './clients/Gradio/models'
-
-        # Target file to check
-        target_file = os.path.join(extract_to, 'moondream-2b-int8.mf')
-
-        # Only proceed if the target file doesn't exist
-        if not os.path.exists(target_file):
-            print("moondream-2b-int8.mf not found. Downloading and extracting...")
-            # Make sure the extraction folder exists
-            os.makedirs(extract_to, exist_ok=True)
-
-            # Download the zip
-            response = requests.get(zip_url)
-            response.raise_for_status()
-
-            # Extract it
-            # Decompress and write the file
-            with gzip.open(io.BytesIO(response.content), 'rb') as f_in:
-                with open(target_file, 'wb') as f_out:
-                    f_out.write(f_in.read())
-
-            print(f"Done! Extracted to: {extract_to}")
-
-        md_model = md.vl(model="./clients/Gradio/models/moondream-2b-int8.mf")
-
-    # Load and process image
-    image = Image.open(file_path)
-    encoded_image = md_model.encode_image(image)
-
-    # Generate caption
-    # caption = model.caption(encoded_image)["caption"]
-    # print("Caption:", caption)
-
-    # Ask questions
-    result = md_model.query(encoded_image, message)["answer"]
-    print("Answer:", result)
-    return result
-
-
 async def create_interface():
     theme = gr.themes.Default(primary_hue="blue").set(
         loader_color="#FF0000",
@@ -263,8 +198,6 @@ async def create_interface():
                    fill_height=True,
                    #css="footer{display:none !important}"
                    css="footer {visibility: hidden}"
-
-
                     )
           as demo):
         # Login UI Elements
@@ -327,6 +260,7 @@ async def create_interface():
                         global top_p
                         global model
                         global md_model
+                        global image_url
 
                         files = []
                         # deal with multimodal textfield
@@ -336,7 +270,7 @@ async def create_interface():
                         except:
                             print("using regular message")
 
-
+                        image_url = None
                         if len(files) > 0:
                             for file_path in files:
                                 print(file_path)
@@ -348,11 +282,7 @@ async def create_interface():
                                    message = transcribe_whisper(file_path)
 
                                 elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
-                                    message = "analyze this image: prompt: " + message + " filepath: " + file_path
-                                    #result = process_image(message, file_path)
-                                    #result = [{"role": "assistant", "content": str(result)}]
-                                    #yield result
-                                    #return
+                                    image_url = file_path
 
                                 else:
 
@@ -405,7 +335,32 @@ async def create_interface():
                                     history_openai_format.append({"role": entry["role"], "content": str(entry["content"])})
                                     last_role = entry["role"]
 
-                            history_openai_format.append({"role": "user", "content": message})
+                            if image_url is None:
+                                history_openai_format.append({"role": "user", "content": message})
+                            else:
+                                image = Image.open(image_url)
+                                # Convert the image to a byte stream
+                                buffered = io.BytesIO()
+                                image.save(buffered, format="JPEG")  # Specify the format (e.g., JPEG, PNG)
+                                image_bytes = buffered.getvalue()
+                                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+
+                                history_openai_format.append(
+
+                                    {
+                                        "role": "user",
+                                        "content": [
+                                            {"type": "text", "text": message},
+                                            {
+                                                "type": "image_url",
+                                                "image_url": {
+                                                    "url": f"data:image/jpeg;base64,{image_base64}"
+                                                },
+                                            },
+                                        ],
+                                    }
+
+                                )
 
                             print(history_openai_format)
 
@@ -415,14 +370,13 @@ async def create_interface():
                                 http_client=httpx.Client(verify=False)
                             )
 
-
                             completion = client.chat.completions.create(
                                 model=model,
                                 messages=history_openai_format,
                                 temperature=temperature,
                                 top_p=top_p,
                                 tools = tools or None,
-                                stream=False
+                                stream=False,
                             )
 
                             # Process response and handle tool calls
@@ -446,8 +400,6 @@ async def create_interface():
                                     history_openai_format = [{"role": "system", "content": system_prompt},
                                                              {"role": "user", "content": message}]
 
-
-                                    #history_openai_format = [{"role": "user", "content": message}]
                                     completion = client.chat.completions.create(
                                         model=model,
                                         messages=history_openai_format,
@@ -555,7 +507,6 @@ async def create_interface():
                                             )
 
                                             # Continue conversation with tool results
-
                                             if  len(content)> 0 and content[0].get("type") == "text" and content[0].get("text") is not None:
 
                                                 #temporary workaround, move to image instead of text
@@ -696,21 +647,6 @@ async def create_interface():
 
                                                     ]
 
-                                                    #yield [
-                                                    #    {
-                                                    #        "role": "assistant",
-                                                    #        "content": "\n" + tool_message + "\n" + f"Reply:\n {content}" + "\n",
-                                                    #        "tool_calls": [tool_name],
-                                                    #        "metadata": {"title": f"🛠️ Used tool {tool_name}",
-                                                    #                     "status": "done"}
-                                                    #    },
-                                                    #    {
-                                                    #        "role": "assistant",
-                                                    #        "content": f"![Image Description](file:///{fullpath})"
-                                                    #    }
-
-
-                                                    #]
                                                 except Exception as e:
                                                     print(e)
                                                     yield [
@@ -725,9 +661,7 @@ async def create_interface():
                                                             "role": "assistant",
                                                             "content": "Error receiving an image"
                                                         }
-
                                                     ]
-
 
                             else:
                                 partial_mes = ""
@@ -862,6 +796,7 @@ async def create_interface():
 
                     )
                     with gr.Row():
+                        #prompt_dd = gr.Dropdown(choices=prompt_dict)
                         show_btn = gr.Button("Chat Settings")
                         show_btn2 = gr.Button("MCP Tools")
                 with gr.Tab("Sources"):
@@ -890,9 +825,6 @@ async def create_interface():
 
                         if file_extension == ".wav":
                             markdown = transcribe_whisper(file_path)
-
-                        elif file_extension == ".jpg" or file_extension == ".jpeg" or file_extension == ".png" or file_extension == ".bmp":
-                            markdown = process_image("Analyze this image", file_path)
 
                         else:
                             content = ""
@@ -1012,15 +944,9 @@ async def create_interface():
 
                     main.load(load_sources, outputs=[sources_state])
 
-
-
-
                 with Modal(visible=False) as modalsettings:
                     global temperature
                     global top_p
-
-
-
 
                     def change_temperature(value):
                         global temperature
@@ -1066,9 +992,6 @@ async def create_interface():
 
 
                         gr.Textbox(descr, show_label=True, label=mcp_server[2], lines=lines)
-
-
-
 
 
                 show_btn.click(lambda: Modal(visible=True), None, modalsettings)
