@@ -1,6 +1,5 @@
 gradio==5.24.0
-gradio_modal==1.8.0
+gradio_modal==0.0.4
 openai
-mcp
+mcp==1.5.0
 faster-whisper
-moondream==0.0.5
