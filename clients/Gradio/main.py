@@ -36,7 +36,8 @@ all_mcp_servers = False
 temperature = 0.8
 top_p = 0.8
 #model = "/models/mistral-nemo-12b" #vllm
-model = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+#model = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
+model = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
 md_model = None
 
 
