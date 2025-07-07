@@ -31,13 +31,13 @@ mcp_config = "./clients/Gradio/server_config.json"
 #selection of mcp servers from the config
 server_names = ["dp"] #"demo-tools", "filesystem", "sqlite", "nostr",  "agent_web_search", "hf_flux", ] #"google-calendar"] #
 # if all_mcp_servers is True, the above list will be overwritten and all servers in the config will be considered
-all_mcp_servers = False
+all_mcp_servers = True
 
 temperature = 0.8
 top_p = 0.8
 #model = "/models/mistral-nemo-12b" #vllm
 #model = "mistralai/Mistral-Small-3.1-24B-Instruct-2503"
-model = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
+#model = "mistralai/Mistral-Small-3.2-24B-Instruct-2506"
 md_model = None
 
 
@@ -45,22 +45,35 @@ image_url = None
 
 
 
-# Konfiguration laden
+# Load configuration file
 try:
+    # Get the absolute path to the config.json file
     config_file = Path.absolute(Path(__file__).parent / "config.json")
+    # Initialize configuration with required fields
     config = Config(config_file=config_file, required_fields=["base_url"])
+    # Retrieve default groups and VLLM configuration from config file
     default_groups = config.get("groups", [])
     vllm_url =  config.get("vllm_url", "")
     vllm_api_key = config.get("vllm_api_key", "")
+    model = config.get("model", "/models/mistral-nemo-12b")
+    access_header = config.get("access_header", None)
+    proxy_user = config.get("proxy_user", None)
+    if proxy_user == "":
+        proxy_user = None
+    proxy_password = config.get("proxy_password", None)
+    if proxy_password == "":
+        proxy_password = None
 except ConfigError as e:
+    # Display an error message and exit if configuration cannot be loaded
     print(f"Configuration Error: {e}")
     exit(1)
 
+# If all_mcp_servers is set to True, load all mcp servers from the config file
 if all_mcp_servers:
     with open(mcp_config, 'r') as f:
+        # Read the config file and extract mcp server names
         server_names = list(json.load(f)['mcpServers'].keys())
         print(server_names)
-
 
 
 
@@ -364,11 +377,21 @@ async def create_interface():
                                 )
 
                             print(history_openai_format)
+                            headers = {
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            }
+
+                            if access_header is not None:
+                                headers['X-Custom-Header'] = access_header
+                            elif proxy_user is not None and proxy_password is not None:
+                                auth = base64.b64encode(f"{proxy_user}:{proxy_password}".encode()).decode()
+                                headers['Authorization'] = f'Basic {auth}'
 
                             client = OpenAI(
                                 base_url=vllm_url,
                                 api_key=vllm_api_key,
-                                http_client=httpx.Client(verify=False)
+                                http_client=httpx.Client(verify=False, headers=headers)
                             )
 
                             completion = client.chat.completions.create(
