@@ -1,0 +1,7 @@
+{
+	"base_url": "https://url/api/v1",
+    "email": "",
+    "password": "",
+    "language": "en",
+    "use_public": true
+}
