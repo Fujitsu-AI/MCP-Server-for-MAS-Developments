@@ -14,7 +14,7 @@ config = Config(config_file=config_file, required_fields=["base_url"])
 pgpt = PrivateGPTAPI(config)
 
 # TODO replace document id after first run
-document_id = "87c6a088-6359-4585-a1da-69f70036ced6"
+document_id = None
 
 def init_entry(groups):
     id = pgpt.add_source("This is a test!", groups, "News Minimalist")["documentId"]
