@@ -35,6 +35,8 @@ async def chat_test(message: str) -> str:
     result = pgpt.create_chat(message)
     return result["data"]["answer"]
 
+
+@mcp.tool()
 async def add_user(userName:str, userEmail:str, userPassword:str, userGroups: list) -> str:
     """Add a user to PrivateGPT """
     config = load_config()
