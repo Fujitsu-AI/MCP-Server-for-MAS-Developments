@@ -27,7 +27,7 @@ def load_config():
 
 @mcp.tool()
 async def chat_test(message: str) -> str:
-    """Interact with a Knowledge database about """
+    """Interact with a Knowledge database about the user request"""
     config = load_config()
     pgpt = PrivateGPTAPI(config)
     print(pgpt.chosen_groups)
