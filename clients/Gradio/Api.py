@@ -142,13 +142,16 @@ class PrivateGPTAPI:
         url = f"{self.base_url}/groups"
         try:
             resp = self.session.get(url)
-            j = json.loads(resp.content)
-            data_block = j["data"]
-            if not data_block:
-                return []
+            try:
+                j = json.loads(resp.content)
+                data_block = j["data"]
+                if not data_block:
+                    return []
 
-            personal = data_block.get("personalGroups", [])
-            return personal
+                personal = data_block.get("personalGroups", [])
+                return personal
+            except:
+                return []
 
         except NetworkError as e:
             return []
@@ -278,7 +281,7 @@ class PrivateGPTAPI:
 
         except requests.exceptions.RequestException as e:
             print(f"❌ Failed to get response: {e}")
-            return {"error": f"❌ Failed to get response: {e}"}
+            return []
 
     def respond_with_context(self, messages, response_format=None, request_tools=None):
         last_user_message = next((p for p in reversed(messages) if p["role"] == "user"), None)

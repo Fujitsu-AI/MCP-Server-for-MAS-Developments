@@ -114,6 +114,8 @@ def delete_source(sources, index):
 
 def render_ui(sources):
     updates = []
+    if sources is None:
+        sources = []
     for i in range(MAX_ITEMS):
         if i < len(sources):
             src = sources[i]
@@ -943,6 +945,11 @@ async def create_interface():
                         #todo that's ugly.
                         while pgpt is None:
                             time.sleep(2)
+
+                        if not pgpt.logged_in:
+                            return
+
+
                         groups = pgpt.list_personal_groups()
                         print(groups)
 
