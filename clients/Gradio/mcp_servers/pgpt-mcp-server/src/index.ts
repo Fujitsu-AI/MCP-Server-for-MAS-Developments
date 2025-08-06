@@ -19,16 +19,20 @@ let API_URL = process.env.PRIVATE_GPT_API_URL as string;
 const USER = process.env.user as string;
 const PASSWORD = process.env.password as string;
 
-// Use the provided configuration
-const BASE_URL = 'https://prometheus.ai-testdrive.com/api/v1';
-const PROXY_USER = 'staging@ai-testdrive.com';
-const PROXY_PASSWORD = 'StagingGpt$24';
+// Use environment variables for proxy configuration
+const PROXY_USER = process.env.PROXY_USER as string;
+const PROXY_PASSWORD = process.env.PROXY_PASSWORD as string;
 
-// Set API_URL to use the provided base URL
-API_URL = BASE_URL;
+// Validate proxy credentials if provided
+if (PROXY_USER && !PROXY_PASSWORD) {
+  throw new Error('PROXY_PASSWORD environment variable is required when PROXY_USER is set');
+}
+if (PROXY_PASSWORD && !PROXY_USER) {
+  throw new Error('PROXY_USER environment variable is required when PROXY_PASSWORD is set');
+}
 
 // Add /api/v1 prefix if not present
-if (!API_URL.endsWith('/api/v1')) {
+if (API_URL && !API_URL.endsWith('/api/v1')) {
   API_URL = API_URL.replace(/\/?$/, '/api/v1');
 }
 
@@ -43,7 +47,8 @@ if (!USER || !PASSWORD) {
 
 console.error('Starting server with config:', {
   API_URL,
-  USER
+  USER,
+  PROXY_USER: PROXY_USER ? '***' : 'not set'
 });
 
 class PrivateGPTServer {
@@ -65,15 +70,21 @@ class PrivateGPTServer {
       }
     );
 
-    // Create axios instance with SSL disabled for development and proxy auth
-    const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
+    // Create axios instance with optional proxy auth
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+
+    // Add proxy authentication if credentials are provided
+    if (PROXY_USER && PROXY_PASSWORD) {
+      const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
+      headers['Authorization'] = `Basic ${proxyAuth}`;
+    }
+
     this.axiosInstance = axios.create({
       baseURL: API_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Basic ${proxyAuth}`
-      },
+      headers,
       httpsAgent: new https.Agent({  
         rejectUnauthorized: false
       })
@@ -102,15 +113,18 @@ class PrivateGPTServer {
         this.authToken = loginResponse.data.data.token;
         console.error('Got auth token');
 
-        // Update both the default headers and the instance headers with combined auth
-        const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
-        const combinedAuth = `Basic ${proxyAuth}, Bearer ${this.authToken}`;
+        // Update authorization header with combined auth
+        let combinedAuth = `Bearer ${this.authToken}`;
+        if (PROXY_USER && PROXY_PASSWORD) {
+          const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
+          combinedAuth = `Basic ${proxyAuth}, Bearer ${this.authToken}`;
+        }
         
         // Set on multiple places to ensure it's used
         this.axiosInstance.defaults.headers.common['Authorization'] = combinedAuth;
         this.axiosInstance.defaults.headers['Authorization'] = combinedAuth;
         
-        console.error('Updated Authorization header:', combinedAuth);
+        console.error('Updated Authorization header');
       } catch (error) {
         console.error('Login error:', error);
         throw error;
@@ -731,9 +745,13 @@ class PrivateGPTServer {
             console.error('Got logout response:', logoutResponse.data);
             // Clear the auth token after successful logout
             this.authToken = null;
-            // Reset authorization header to just proxy auth
-            const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
-            this.axiosInstance.defaults.headers.common['Authorization'] = `Basic ${proxyAuth}`;
+            // Reset authorization header to just proxy auth (if available)
+            if (PROXY_USER && PROXY_PASSWORD) {
+              const proxyAuth = Buffer.from(`${PROXY_USER}:${PROXY_PASSWORD}`).toString('base64');
+              this.axiosInstance.defaults.headers.common['Authorization'] = `Basic ${proxyAuth}`;
+            } else {
+              delete this.axiosInstance.defaults.headers.common['Authorization'];
+            }
             return {
               content: [
                 {
