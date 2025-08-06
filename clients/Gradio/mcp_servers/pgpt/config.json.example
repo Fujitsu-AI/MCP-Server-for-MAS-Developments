@@ -1,0 +1,10 @@
+{
+	"base_url": "https://base_url/api/v1",
+    "proxy_user": "user@ai-testdrive.com",
+    "proxy_password": "pp",
+    "language": "en",
+    "use_public": false,
+    "email": "name@email.com",
+    "password": "Password!",
+    "groups": []
+}

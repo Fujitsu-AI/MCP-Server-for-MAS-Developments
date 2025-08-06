@@ -37,3 +37,4 @@ clients/Gradio/mcp_servers/sqlite/test.db
 clients/Gradio/models/moondream-2b-int8.mf
 clients/Gradio/models/moondream-0_5b-int8.mf
 examples/dynamic_sources/rss_reader/config.json
+/clients/Gradio/mcp_servers/pgpt/config.json
