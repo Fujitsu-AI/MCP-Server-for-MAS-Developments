@@ -12,7 +12,7 @@ target_groups = ["PrivateGPT"] #make sure group(s) exist in PrivateGPT
 pgpt = PrivateGPTAPI(config)
 
 pgpt.upload_sftp("path_to_file.pdf")
-documents = pgpt.get_sources_from_group("temp")
+documents = pgpt.get_sources_from_group(pgpt.ftp_subfolder)
 first_document_id = documents[0]["sourceId"]
 print(first_document_id)
 
