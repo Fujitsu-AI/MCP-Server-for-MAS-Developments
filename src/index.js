@@ -225,12 +225,17 @@ function validateBoolean(varName, value, t, useProxy = false) {
  * @param {string} encryptedData - The encrypted string in Base64 format.
  * @returns {string} - The decrypted password.
  */
+/**
+ * Decrypt a cryptographic string using the private key.
+ * @param {string} encryptedData - The encrypted string in Base64 format.
+ * @returns {string} - The decrypted password.
+ */
 function decryptPassword(encryptedData) {
     try {
         const decryptedPassword = crypto.privateDecrypt(
             {
                 key: privateKey,
-                padding: crypto.constants.RSA_PKCS1_PADDING, // Ensure consistent padding
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING,                                                                                                                                                                 //padding: crypto.constants.RSA_PKCS1_PADDING, // Ensure consistent padding
             },
             Buffer.from(encryptedData, 'base64')
         ).toString('utf8');
@@ -248,7 +253,7 @@ function encryptWithPublicKey(data) {
         return crypto.publicEncrypt(
             {
                 key: publicKey,
-                padding: crypto.constants.RSA_PKCS1_PADDING, // Explicitly set padding
+                padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // Explicitly set padding
             },
             Buffer.from(data)
         ).toString('base64');

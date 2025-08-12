@@ -7,7 +7,7 @@ function loadPublicKey(path) {
     if (!path) {
         throw new Error(
             `No public key path provided. Please specify the path to the RSA-public key as an argument.
-			Example usage: node security/generate_encrypted_password.js ~/.ssh/id_rsa_public.pem`
+                        Example usage: node security/generate_encrypted_password.js ~/.ssh/id_rsa_public.pem`
         );
     }
 
@@ -23,7 +23,8 @@ function encryptWithPublicKey(data, publicKey) {
     return crypto.publicEncrypt(
         {
             key: publicKey,
-            padding: crypto.constants.RSA_PKCS1_PADDING, // Explicitly set padding
+            padding: crypto.constants.RSA_PKCS1_OAEP_PADDING
+            //padding: crypto.constants.RSA_PKCS1_PADDING, // Explicitly set padding
         },
         Buffer.from(data)
     ).toString('base64');
