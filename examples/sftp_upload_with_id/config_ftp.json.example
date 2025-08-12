@@ -1,0 +1,12 @@
+{
+	"base_url": "https://domain/api/v1",
+    "proxy_user": "proxyuser",
+    "proxy_password": "proxypw",
+    "email": "login",
+    "password": "password!",
+    "ftp_password": "ftppassword!",
+    "ftp_host": "sftp.domain.com",
+    "ftp_port": 1234,
+    "language": "en",
+    "use_public": true
+}
