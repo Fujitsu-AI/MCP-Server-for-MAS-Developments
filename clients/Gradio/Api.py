@@ -1,6 +1,10 @@
 import json
+import os
+import posixpath
 from pathlib import Path
+from time import sleep
 
+import paramiko
 import requests
 import urllib3
 import base64
@@ -60,10 +64,18 @@ class PrivateGPTAPI:
         else:
             self.email =  config.get("email", None)
             self.password =  config.get("password", None)
+            self.ftp_password = config.get("ftp_password", None)
+
 
         self.session = initialize_session(self.proxy_user, self.proxy_password, self.access_header)
         if self.login():
             self.logged_in = True
+
+        if self.ftp_password is not None:
+            self.ftp_host = config.get("ftp_host", None)
+            self.ftp_port = config.get("ftp_port", None)
+            self.ftp_folder = config.get("ftp_folder", "/")
+            self.ftp_subfolder = config.get("ftp_subfolder", "temp")
 
     def login(self):
         """Authenticate the user and retrieve the token."""
@@ -236,6 +248,37 @@ class PrivateGPTAPI:
             print(f"❌ Failed to get response: {e}")
             return {"error": f"❌ Failed to get response: {e}"}
 
+
+    def update_source(self, source_id, markdown=None, groups=None, name=None):
+        """Edit an existing Source"""
+        url = f"{self.base_url}/sources/{source_id}"
+
+        try:
+            payload = {}
+            if groups is None:
+                existing_groups = self.get_document_info(source_id)["groups"]
+                payload["groups"] = existing_groups
+            else:
+                payload["groups"] = groups
+
+            if markdown is not None:
+                payload["content"] = markdown
+            if name is not None:
+                payload["name"] = name
+
+            resp = self.session.patch(url, json=payload)
+
+            j = json.loads(resp.content)
+            data_block = j["data"]
+            if not data_block:
+                return []
+
+            return data_block
+
+        except requests.exceptions.RequestException as e:
+            print(f"❌ Failed to get response: {e}")
+            return {"error": f"❌ Failed to get response: {e}"}
+
     def delete_source(self, source_id):
         """Send a source id to retrieve details. Working with version 1.3.3 and newer"""
         url = f"{self.base_url}/sources/{source_id}"
@@ -253,6 +296,54 @@ class PrivateGPTAPI:
         except requests.exceptions.RequestException as e:
             print(f"❌ Failed to get response: {e}")
             return {"error": f"❌ Failed to get response: {e}"}
+
+
+
+    def upload_sftp(self, file_path):
+        # Connect to SFTP to determine existing suffixes
+        transport = paramiko.Transport((self.ftp_host, self.ftp_port))
+        transport.connect(username=self.email, password=self.ftp_password)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+        remote_base_dir = posixpath.join(self.ftp_folder, self.ftp_subfolder)
+
+        # Ensure the remote directory exists
+        try:
+            sftp.chdir(remote_base_dir)
+        except IOError:
+            # Create remote dirs if missing
+            parts = remote_base_dir.strip("/").split("/")
+            path = ""
+            for part in parts:
+                path = posixpath.join(path, part)
+                try:
+                    sftp.chdir(path)
+                except IOError:
+                    sftp.mkdir(path)
+                    sftp.chdir(path)
+
+            # Determine remote file name
+        remote_filename = os.path.basename(file_path)
+        remote_path = posixpath.join(remote_base_dir, remote_filename)
+
+        # Upload the file
+        try:
+            sftp.put(file_path, remote_path)
+            print(f"Uploaded {file_path} to {remote_path} successfully.")
+        except Exception as e:
+            print(e)
+
+        finally:
+            sftp.close()
+            transport.close()
+            sources = []
+
+            while len(sources) == 0:
+               print(f"Waiting for file to be added..")
+               sleep(2)
+               sources = self.get_sources_from_group(self.ftp_subfolder)
+
+            return sources
+
 
 
     def get_sources_from_group(self, group):
