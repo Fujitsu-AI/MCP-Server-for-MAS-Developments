@@ -11,7 +11,7 @@ import base64
 
 from httpcore import NetworkError
 
-from .config import Config
+from clients.Gradio.config import Config
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -52,7 +52,7 @@ class PrivateGPTAPI:
 
         self.chosen_groups = config.get("groups", [])
         self.language = config.get("language", "en")
-        self.use_public = config.get("use_public", True)
+        self.use_public = config.get("use_public", False)
         self.whitelist_keys = config.get("whitelist_keys", [])
         self.logged_in = False
 
@@ -494,6 +494,8 @@ def main():
     """Main function to run the chat application."""
     config_file = Path.absolute(Path(__file__).parent / "config.json")
     config = Config(config_file=config_file, required_fields=["base_url"])
+
+
     chat = PrivateGPTAPI(config)
 
     print("Type your questions below. Type 'quit' to exit.")
