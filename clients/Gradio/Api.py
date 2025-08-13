@@ -335,12 +335,13 @@ class PrivateGPTAPI:
         finally:
             sftp.close()
             transport.close()
+            print(f"Connection closed")
             sources = []
 
             while len(sources) == 0:
-               print(f"Waiting for file to be added..")
+               print(f"Checking file status")
                sleep(2)
-               sources = self.get_sources_from_group(self.ftp_subfolder)
+               sources = self.get_sources_from_group("temp")
 
             return sources
 
@@ -491,7 +492,7 @@ def decrypt_api_key(api_key):
 
 def main():
     """Main function to run the chat application."""
-    config_file = Path.absolute(Path(__file__).parent.parent / "pgpt_openai_api_proxy.json")
+    config_file = Path.absolute(Path(__file__).parent / "config.json")
     config = Config(config_file=config_file, required_fields=["base_url"])
     chat = PrivateGPTAPI(config)
 
@@ -502,7 +503,10 @@ def main():
             if question.lower() == 'quit':
                 break
             if question:
-                chat.query_private_gpt(question)
+                if chat.chat_id is None:
+                    chat.create_chat(question)
+                else:
+                    chat.query_private_gpt(question)
         except KeyboardInterrupt:
             print("\nExiting chat...")
             break
