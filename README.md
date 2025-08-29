@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/fujitsu-ai-mcp-server-for-mas-developments-badge.png)](https://mseep.ai/app/fujitsu-ai-mcp-server-for-mas-developments)
+
 ![privateGPT MCP Server](images/privateGPT-MCP.png)
 
 ## Table of Contents
