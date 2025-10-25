@@ -3,7 +3,7 @@
 import json
 import os
 import logging
-from clients.Gradio.language import languages
+from language import languages
 
 
 class ConfigError(Exception):
