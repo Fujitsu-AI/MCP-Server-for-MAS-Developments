@@ -1,0 +1,23 @@
+# ============================================================
+# ISM Agent – Python Requirements
+# ============================================================
+
+# HTTP Requests / REST-Kommunikation
+requests>=2.31.0
+
+# SSH / Paramiko (falls Remotezugriffe verwendet werden)
+paramiko>=3.4.0
+
+# Argument Parser (CLI)
+argparse>=1.4.0
+
+# Logging und Zeitfunktionen
+logging>=0.4.9.6
+datetime>=5.5
+
+# PDF-Unterstützung (optional, für JSON im PDF)
+PyPDF2>=3.0.1
+
+# Farbige Konsole (ANSI, auch für Windows)
+colorama>=0.4.6
+wcwidth>=0.2.13
