@@ -81,7 +81,9 @@ Create or edit `agents/ISMAgent/config.json`. Minimal structure:
     "api_key": "YOUR_SECURE_API_KEY",
     "use_public": true,
     "groups": [],
-    "timeout_seconds": 20
+    "timeout_seconds": 20,
+    "prompt_template": "Please provide a detailed, single-paragraph technical summary in {language_code} for the following infrastructure node data. Focus on the status and versions. Node data: {json_data}"
+  },
   },
   "language": "en",
 
@@ -108,6 +110,7 @@ Create or edit `agents/ISMAgent/config.json`. Minimal structure:
 | `password`        | string   | —       | Login password (or use key-based auth by extending the code if desired). |
 | `remote_path`     | string   | `"/"`   | **Target directory path on the SFTP server.** If it does not exist, the agent **creates it recursively**. The `remote_path` must correspond to an existing group of the PGPT user. Otherwise, the data will not be automatically imported. The user's SFTP access must also be activated at PGPT and the password for SFTP must be set.|
 | `remote_filename` | string\|null | `null` | Optional override for the uploaded file name. If `null` or omitted, the local output file name is used. |
+
 
 > **Directory creation behavior:**  
 > Before uploading, the agent computes the final `remote_path/remote_filename` and **ensures the parent directory exists**, creating any missing segments (e.g., `/upload/ism/reports/2025/10`). This is safe and idempotent.
@@ -207,8 +210,8 @@ The provided PowerShell wrapper offers a Windows-friendly way to execute the age
   "host": "10.0.0.10",
   "username": "ci",
   "password": "ci-password",
-  "remote_path": "/data/ism/2025/10/26",
-  "remote_filename": "ism_nodes_report_2025-10-26.txt"
+  "remote_path": "/<insert groupname PGPT>",
+  "remote_filename": "ism_nodes_report_2025-10-26.txt.example"
 }
 ```
 

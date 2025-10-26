@@ -5,6 +5,9 @@
 # - HTTP (FIPA-ACL) request to chatbot agent
 # - Robust error handling, retries with backoff, NDJSON events
 # - Paths (input/output/logs) are read from config["paths"]
+# - After successful input read: archive input with sequential extension
+# - NEW: Optional SFTP upload of the output file after completion
+# - NEW: Delete local output file upon successful SFTP upload
 # ============================================================
 
 import json
@@ -14,13 +17,18 @@ import sys
 import argparse
 import logging
 import os
+import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
 from colorama import init as colorama_init, Fore, Style
-from wcwidth import wcswidth  # emoji/wide-char aware width calc
+from wcwidth import wcswidth # emoji/wide-char aware width calc
+
+# NEW: SFTP deps
+import paramiko
+import posixpath
 
 # ------------------------------------------------------------
 # OPTIONAL: AgentInterface (PrivateGPT) – best-effort imports
@@ -93,18 +101,7 @@ class StructuredLog:
             lvl = level.upper()
             if lvl in self.LEVEL_ICONS:
                 return self.LEVEL_ICONS[lvl] + " |"
-        #mapping = {
-        #    "info":  "🅸",
-        #    "ok":    "✓",
-         #   "warn":  "⚠",
-         #   "error": "⛔",
-         #   "net":   "↔",
-         #   "file":  "💾",
-         #   "proc":  "▶",
-         #   "mqtt":  "🐍",
-         #   "cb":    "🤖",
-        #}
-        #return mapping.get(kind, "🅸") + " "  # trailing space stabilizes width
+        return "ℹ️ |"
 
     def _line(self, icon: str, component: str, action: str, direction: str, message: str) -> str:
         t_col   = self._pad_raw(self._ts(), self.COL_TIME)
@@ -183,6 +180,14 @@ def load_config(path: Path) -> Dict[str, Any]:
     chatbot.setdefault("use_public", True)
     chatbot.setdefault("groups", [])
     chatbot.setdefault("timeout_seconds", 20)
+    
+    # NEU: Standard-Prompt-Template hinzufügen (für Konfigurations-Unabhängigkeit)
+    default_prompt = (
+        "prompt_template parameter not set. Repeat this sentence."
+    )
+    chatbot.setdefault("prompt_template", default_prompt)
+    data["chatbot_agent"] = chatbot # Update data with chatbot defaults
+
     data.setdefault("language", "en")
 
     # Paths block is expected but optional; defaults below if missing.
@@ -191,7 +196,18 @@ def load_config(path: Path) -> Dict[str, Any]:
     paths.setdefault("output", "agents/ISMAgent/output/ism_nodes_report.txt")
     paths.setdefault("ndjson", "agents/ISMAgent/logs/ism_agent.ndjson")
     paths.setdefault("dump_json_dir", "agents/ISMAgent/logs/node_json")
+    # NEW: archive directory default
+    paths.setdefault("archive_dir", "agents/ISMAgent/archive")
     data["paths"] = paths
+
+    # NEW: SFTP defaults (optional)
+    sftp = data.get("sftp", {})
+    if sftp:
+        sftp.setdefault("enabled", True)
+        sftp.setdefault("port", 22)
+        sftp.setdefault("remote_path", "/")
+        sftp.setdefault("remote_filename", None)
+        data["sftp"] = sftp
 
     return data
 
@@ -330,12 +346,23 @@ def generate_logical_sentence(
 ) -> str:
     attempt = 0
     last_error = None
+    
+    # Lese das Prompt-Template aus der Konfiguration
+    prompt_template = config.get("chatbot_agent", {}).get("prompt_template")
+    if not prompt_template:
+        # Sollte nicht passieren, wenn load_config korrekt ist
+        prompt_template = (
+            "Generate a fluent, well-written paragraph in {language_code} describing the following node. "
+            "It should read like a technical report (no tables or bullet points). "
+            "Here are the data:\n"
+            "{json_data}"
+        )
 
-    prompt = (
-        f"Generate a fluent, well-written paragraph in {language_code.upper()} describing the following node. "
-        "It should read like a technical report (no tables or bullet points). "
-        "Here are the data:\n"
-        + json.dumps(parameters, ensure_ascii=False, indent=4)
+    # Erstelle den finalen Prompt durch Ersetzen der Platzhalter
+    # Hier: {language_code} und {json_data}
+    prompt = prompt_template.format(
+        language_code=language_code.upper(),
+        json_data=json.dumps(parameters, ensure_ascii=False, indent=4)
     )
 
     if use_public is None:
@@ -360,7 +387,7 @@ def generate_logical_sentence(
                 "language": "fipa-sl",
                 "ontology": "fujitsu-iot-ontology",
                 "content": {
-                    "question": prompt,
+                    "question": prompt, # Verwende den aus der Config generierten Prompt
                     "usePublic": use_public,
                     "groups": groups,
                     "language": language_code or config.get("language", "en"),
@@ -451,6 +478,126 @@ def dump_node_json(
 
 
 # ============================================================
+# Input Archiving helpers
+# ============================================================
+def _next_archive_path(src: Path, archive_dir: Path) -> Path:
+    """
+    Determine next archive filename:
+    <original-name>.<NNN> (e.g., ism_nodes.json.001, .002, ...)
+    """
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    stem_with_suffix = src.name  # full name incl. .json/.pdf
+    max_idx = 0
+    for p in archive_dir.glob(stem_with_suffix + ".*"):
+        suf = p.suffix  # e.g. ".001"
+        if len(suf) >= 2 and suf[1:].isdigit():
+            try:
+                idx = int(suf[1:])
+                if idx > max_idx:
+                    max_idx = idx
+            except ValueError:
+                pass
+    next_idx = max_idx + 1
+    return archive_dir / f"{stem_with_suffix}.{next_idx:03d}"
+
+
+def archive_input_file(src: Path, archive_dir: Path) -> Optional[Path]:
+    """
+    Move input file into archive with sequential extension.
+    Archive only if src exists and isn't already inside archive_dir.
+    Return target path or None if skipped.
+    """
+    try:
+        # Skip if already inside archive_dir
+        try:
+            src.resolve().relative_to(archive_dir.resolve())
+            return None
+        except Exception:
+            pass
+
+        if not src.exists():
+            return None
+        target = _next_archive_path(src, archive_dir)
+        shutil.move(str(src), str(target))
+        if slog:
+            slog.console("file", "filesystem", ":archive", "-", f"Archived input to: {target}")
+            slog.file_event(event="input_archived", source=str(src), target=str(target))
+        return target
+    except Exception as e:
+        if slog:
+            slog.console("warning", "filesystem", ":archive", "Error", f"{e}", level="warning")
+            slog.file_event(event="archive_failed", source=str(src), error=str(e))
+        return None
+
+
+# ============================================================
+# NEW: SFTP helpers (inspired by iot_mqtt_agent.py)  
+# ============================================================
+def _sftp_mkdirs(sftp: paramiko.SFTPClient, remote_dir: str) -> None:
+    """
+    Recursively ensure that remote_dir exists (POSIX).
+    """
+    remote_dir = posixpath.normpath(remote_dir)
+    parts = [p for p in remote_dir.split("/") if p]
+    path = "/"
+    for p in parts:
+        path = posixpath.join(path, p)
+        try:
+            sftp.chdir(path)
+        except IOError:
+            sftp.mkdir(path)
+            sftp.chdir(path)
+
+def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
+    """
+    Upload local_path to SFTP server into sftp_cfg['remote_path'].
+    If 'remote_filename' is set, use it; otherwise keep basename.
+    """
+    host = sftp_cfg.get("host")
+    port = int(sftp_cfg.get("port", 22))
+    user = sftp_cfg.get("username")
+    pwd  = sftp_cfg.get("password")
+    remote_base = sftp_cfg.get("remote_path", "/")
+    remote_name = sftp_cfg.get("remote_filename") or os.path.basename(str(local_path))
+
+    if not (host and user and pwd and remote_base):
+        if slog:
+            slog.console("warning", "sftp", ":config", "Skip", "Incomplete SFTP config; skipping upload.", level="warning")
+            slog.file_event(event="sftp_skipped", reason="incomplete_config")
+        return False
+
+    try:
+        if slog:
+            slog.console("info", "sftp", ":connect", "Outgoing", f"{user}@{host}:{port}")
+        transport = paramiko.Transport((host, port))
+        transport.connect(username=user, password=pwd)
+        sftp = paramiko.SFTPClient.from_transport(transport)
+
+        # ensure directory exists
+        _sftp_mkdirs(sftp, remote_base)
+
+        remote_path = posixpath.join(remote_base, remote_name)
+        sftp.put(str(local_path), remote_path)
+
+        if slog:
+            slog.console("info", "sftp", ":put", "Outgoing", f"{local_path} → {remote_path}")
+            slog.file_event(event="sftp_upload_ok", local=str(local_path), remote=remote_path)
+
+        sftp.close()
+        transport.close()
+        return True
+    except Exception as e:
+        if slog:
+            slog.console("error", "sftp", ":put", "Error", f"{e}", level="error")
+            slog.file_event(event="sftp_upload_failed", local=str(local_path), error=str(e))
+        try:
+            transport.close()
+        except Exception:
+            pass
+        return False
+
+
+# ============================================================
 # Main
 # ============================================================
 def main():
@@ -471,6 +618,7 @@ def main():
     output_path = Path(paths.get("output", "agents/ISMAgent/output/ism_nodes_report.txt"))
     ndjson_path = paths.get("ndjson", "agents/ISMAgent/logs/ism_agent.ndjson")
     dump_dir = Path(paths.get("dump_json_dir", "agents/ISMAgent/logs/node_json"))
+    archive_dir = Path(paths.get("archive_dir", "agents/ISMAgent/archive"))
 
     slog = StructuredLog(ndjson_path, use_color=True)
 
@@ -487,6 +635,9 @@ def main():
         if slog:
             slog.console("error", "main", ":startup", "Error", f"{e}", level="error")
         sys.exit(1)
+
+    # After successful read: archive input
+    archive_input_file(input_path, archive_dir)
 
     results: List[str] = []
 
@@ -514,19 +665,63 @@ def main():
             slog.console("error", "main", ":report", "Error", "No report could be generated.", level="error")
         sys.exit(2)
 
-    # Write report
+    # ─────────────────────────────────────────────────────────
+    # Write report (Append-if-exists, Create-if-missing)
+    # ─────────────────────────────────────────────────────────
+    wrote_ok = False
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        out_text = "\n\n".join(results) + "\n"
-        output_path.write_text(out_text, encoding="utf-8")
-        if slog:
-            slog.console("file", "filesystem", ":write", "-", f"Report saved: {output_path}")
-            slog.file_event(event="report_written", path=str(output_path), size=len(out_text))
+        out_text = "\n\n".join(results).rstrip() + "\n"
+
+        if output_path.exists():
+            with open(output_path, "a", encoding="utf-8") as f:
+                f.write(out_text)
+            if slog:
+                slog.console("file", "filesystem", ":append", "-", f"Appended {len(out_text)} bytes to: {output_path}")
+                slog.file_event(event="report_appended", path=str(output_path), size=len(out_text))
+        else:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(out_text)
+            if slog:
+                slog.console("file", "filesystem", ":write", "-", f"Report created: {output_path}")
+                slog.file_event(event="report_written", path=str(output_path), size=len(out_text))
+        wrote_ok = True
     except Exception as e:
         if slog:
             slog.console("error", "filesystem", ":write", "Error", f"{e}", level="error")
         sys.exit(3)
 
+    # ─────────────────────────────────────────────────────────
+    # SFTP upload and subsequent deletion of the local file
+    # ─────────────────────────────────────────────────────────
+    if wrote_ok:
+        sftp_cfg = cfg.get("sftp") or {}
+        if sftp_cfg.get("enabled", False):
+            # optional override of remote filename (passed into sftp_upload_file)
+            
+            # Starte den Upload und speichere das Ergebnis (True/False)
+            upload_ok = sftp_upload_file(output_path, sftp_cfg)
+            
+            # NEU: Lösche die lokale Output-Datei, wenn der Upload erfolgreich war
+            if upload_ok:
+                try:
+                    os.remove(output_path)
+                    if slog:
+                        slog.console("file", "filesystem", ":delete", "Done", f"Local report deleted after successful SFTP: {output_path}")
+                        slog.file_event(event="report_deleted", path=str(output_path))
+                except Exception as e:
+                    if slog:
+                        slog.console("error", "filesystem", ":delete", "Error", f"Failed to delete local report: {e}", level="error")
+                        slog.file_event(event="delete_failed", path=str(output_path), error=str(e))
+
+            # Logik für fehlgeschlagenen Upload beibehalten (kein Löschen)
+            if not upload_ok:
+                # Do not fail the whole job on upload issues; just log
+                if slog:
+                    slog.console("warning", "sftp", ":post", "Warn", "Upload failed; report remains local.", level="warning")
+        else:
+            if slog:
+                slog.console("info", "sftp", ":post", "Skip", "SFTP disabled in config.")
 
 if __name__ == "__main__":
     try:
