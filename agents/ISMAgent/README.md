@@ -1,4 +1,4 @@
-# Fujitsu / Fsas PrivateGPT ISM Agent
+# Fujitsu PrivateGPT ISM Agent
 
 The **ISM Agent** is a Python-based automation component that processes Infrastructure and Server Management (ISM) data, analyzes node information, and generates descriptive, human-readable reports via an integrated Chatbot Agent.  
 It uses structured, emoji-safe logging for clean console and NDJSON outputs, and follows the FIPA ACL (Agent Communication Language) standard for interoperability in multi-agent ecosystems.
@@ -106,7 +106,7 @@ Create or edit `agents/ISMAgent/config.json`. Minimal structure:
 | `port`            | integer  | `22`    | SFTP port. |
 | `username`        | string   | —       | Login user. |
 | `password`        | string   | —       | Login password (or use key-based auth by extending the code if desired). |
-| `remote_path`     | string   | `"/"`   | **Target directory path on the SFTP server.** If it does not exist, the agent **creates it recursively**. |
+| `remote_path`     | string   | `"/"`   | **Target directory path on the SFTP server.** If it does not exist, the agent **creates it recursively**. The `remote_path` must correspond to an existing group of the PGPT user. Otherwise, the data will not be automatically imported. The user's SFTP access must also be activated at PGPT and the password for SFTP must be set.|
 | `remote_filename` | string\|null | `null` | Optional override for the uploaded file name. If `null` or omitted, the local output file name is used. |
 
 > **Directory creation behavior:**  
