@@ -52,3 +52,102 @@ It uses structured, emoji-safe logging for clean console and NDJSON outputs, and
      },
      "language": "en"
    }
+   ```
+
+---
+
+## PowerShell Launcher Script (`start_ism_agent.ps1`)
+
+The included **PowerShell startup script** provides a Windows-friendly way to execute the ISM Agent without manually handling Python arguments or dependencies.  
+It automates setup, verification, and launch tasks, ensuring smooth execution of the Python-based ISM Agent.
+
+---
+
+### 🧩 Overview
+
+This script wraps the execution of the Python agent `agents/ISMAgent/Python/ism_agent.py` and provides a **clean command-line interface** with optional parameters for logging, language selection, and startup delay.
+
+---
+
+### ⚙️ Parameters
+
+| Parameter | Type | Default | Description |
+|------------|------|----------|--------------|
+| `ConfigPath` | `string` | `"agents\ISMAgent\config.json"` | Path to the agent’s configuration file. |
+| `VerboseLog` | `switch` | `$false` | Enables detailed console logging when set. |
+| `Language` | `string` | `""` | Overrides the default language setting (e.g. `"en"` or `"de"`). |
+| `Delay` | `double` | `0.5` | Delay factor (in seconds) passed to the Python agent for throttled operations. |
+
+---
+
+### 🔧 Functionality
+
+1. **UTF-8 Output Configuration:**  
+   Ensures that PowerShell and Python use UTF-8 encoding for clean emoji/log output:
+   ```powershell
+   $env:PYTHONIOENCODING = "utf-8"
+   [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+   ```
+
+2. **Dependency Check:**  
+   Automatically installs or updates Python dependencies before startup:
+   ```powershell
+   pip install -r agents\ISMAgent\requirements.txt
+   ```
+
+3. **Configuration Validation:**  
+   Verifies that the given config file exists.  
+   If not found, the script terminates with an error message:
+   ```powershell
+   if (-not (Test-Path -LiteralPath $ConfigPath)) {
+       Write-Error "Config file not found: $ConfigPath"
+       exit 1
+   }
+   ```
+
+4. **Dynamic Argument Assembly:**  
+   Constructs a precise argument list for the Python module:
+   ```powershell
+   python -m agents.ISMAgent.Python.ism_agent --config agents\ISMAgent\config.json
+   ```
+   Optional parameters (`--verbose`, `--language`, `--delay`) are added automatically.
+
+5. **Agent Execution:**  
+   Runs the Python module in the current console window and waits until completion:
+   ```powershell
+   Start-Process -FilePath "python" -ArgumentList $argList -NoNewWindow -PassThru -Wait
+   ```
+
+6. **Exit Code Handling:**  
+   The script monitors the agent’s return code and displays a success or error message accordingly:
+   ```powershell
+   ✅ ISM Agent finished successfully.
+   ❌ ISM Agent exited with code X.
+   ```
+
+---
+
+### 🧠 Example Usage
+
+```powershell
+# Start the agent with default configuration
+.\start_ism_agent.ps1
+
+# Run with verbose logging
+.\start_ism_agent.ps1 -VerboseLog
+
+# Specify a different configuration file
+.\start_ism_agent.ps1 -ConfigPath "C:\custom\ism_config.json"
+
+# Run in German with 1 second delay between operations
+.\start_ism_agent.ps1 -Language "de" -Delay 1.0
+```
+
+---
+
+### 💡 Notes
+
+- The script **requires Python** to be available in the system path.  
+- It is **safe to re-run** multiple times; dependencies will be checked each time.
+- UTF-8 output ensures correct rendering of emoji and non-ASCII logs in PowerShell and Windows Terminal.
+- Designed for **automation, integration tests**, or **non-developer environments** where manual Python handling should be avoided.
