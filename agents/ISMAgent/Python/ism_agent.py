@@ -193,6 +193,8 @@ def load_config(path: Path) -> Dict[str, Any]:
     # Paths block is expected but optional; defaults below if missing.
     paths = data.get("paths", {})
     paths.setdefault("input", "agents/ISMAgent/data/ism_nodes.json")
+    # Hinzugefügter Pfad für die Inventardaten
+    paths.setdefault("inventory", "agents/ISMAgent/data/ism_inventory.json") 
     paths.setdefault("output", "agents/ISMAgent/output/ism_nodes_report.txt")
     paths.setdefault("ndjson", "agents/ISMAgent/logs/ism_agent.ndjson")
     paths.setdefault("dump_json_dir", "agents/ISMAgent/logs/node_json")
@@ -281,6 +283,39 @@ def load_nodes(path: Path) -> List[Dict[str, Any]]:
     return nodes
 
 
+# NEU: Funktion zum Laden und Mappen der Inventardaten
+def load_inventory_map(path: Path) -> Dict[int, Dict[str, Any]]:
+    if slog:
+        slog.console("info", "ism", ":filesystem", "read", f"Reading inventory file: {path}")
+
+    if not path.exists():
+        if slog:
+            slog.console("error", "ism", ":filesystem", "Error", f"Inventory file not found: {path}", level="error")
+        raise FileNotFoundError(f"Inventory file not found: {path}")
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        if slog:
+            slog.console("error", "ism", ":json", "Error", f"Invalid JSON in inventory: {e}", level="error")
+        raise
+
+    nodes = (data.get("IsmBody") or {}).get("Nodes") or []
+    inventory_map = {}
+
+    for node in nodes:
+        node_id = node.get("NodeId")
+        if node_id is not None:
+            # Speichere die VariableData, die die meisten Details enthält
+            inventory_map[int(node_id)] = node.get("VariableData", {})
+    
+    if slog:
+        slog.console("info", "ism", ":json", "-", f"{len(inventory_map)} inventory details mapped.")
+        slog.file_event(event="inventory_mapped", count=len(inventory_map), source=str(path))
+
+    return inventory_map
+
+
 # ============================================================
 # Health check (optional)
 # ============================================================
@@ -308,11 +343,13 @@ def _v(x: Any) -> str:
     return s if s and s not in ("-", "None", "null", "NULL") else ""
 
 
-def node_params(node: Dict[str, Any]) -> Dict[str, Any]:
-    bios = _v(node.get("BiosVersion")) or "Not specified"
-    irmc = _v(node.get("iRMC Firmware Version")) or "Not specified"
-    hw_issues = _v(node.get("HardwareIssues")) or "No specific hardware problems mentioned."
+def node_params(node: Dict[str, Any], inventory_map: Dict[int, Dict[str, Any]]) -> Dict[str, Any]:
+    # Lade die Basis-Daten aus ism_nodes.json
+    node_id = int(node.get("NodeId", 0))
+    # Versuche, die Inventardaten zu laden
+    inv_data = inventory_map.get(node_id, {})
 
+    # Initialisiere Basis-Parameter aus ism_nodes.json
     params = {
         "Node Name": _v(node.get("Name")),
         "NodeId": _v(node.get("NodeId")),
@@ -324,12 +361,78 @@ def node_params(node: Dict[str, Any]) -> Dict[str, Any]:
         "IP-Version": _v(node.get("IpVersion")),
         "IP": _v(node.get("IpAddress")),
         "WEB-URL": _v(node.get("WebUrl")),
-        "Hardware Issues": hw_issues,
-        "BIOS Version": bios,
-        "iRMC Firmware Version": irmc,
+        "Rack Position": _v((node.get("RackInfo") or {}).get("Name")),
+        "Node Group": _v(node.get("NodeGroupName")),
     }
-    # keep only non-empty
-    return {k: v for k, v in params.items() if v}
+
+    # ------------------------------------------------------------
+    # Füge detaillierte Inventardaten aus ism_inventory.json hinzu
+    # ------------------------------------------------------------
+    if inv_data:
+        # Extrahiere Hardware-Informationen (Beispiele: CPUs, Memory, Disks)
+        cpus = inv_data.get("Cpus", [])
+        if cpus:
+            cpu_model = _v(cpus[0].get("Model"))
+            cpu_core_speed = _v(cpus[0].get("CoreSpeed"))
+            cpu_count = len(cpus)
+            params["CPU Summary"] = f"{cpu_count}x {cpu_model} @ {_v(cpu_core_speed)}MHz"
+            
+        memory_modules = [m for m in inv_data.get("MemoryModules", []) if m.get("MemorySize")]
+        total_mem_gb = 0
+        if memory_modules:
+            for m in memory_modules:
+                size_str = _v(m.get("MemorySize"))
+                if size_str and "GB" in size_str:
+                    try:
+                        total_mem_gb += int(size_str.replace("GB", "").strip())
+                    except ValueError:
+                        pass
+            
+            if total_mem_gb > 0:
+                mem_freq = _v(memory_modules[0].get("Frequency"))
+                params["Memory Summary"] = f"{len(memory_modules)} physical modules, {total_mem_gb}GB total RAM @ {mem_freq}"
+
+        disks = inv_data.get("Disks", [])
+        if disks:
+            disk_count = len(disks)
+            disk_types = ", ".join(sorted(list(set([_v(d.get("MediaType")) for d in disks]))))
+            disk_models = ", ".join(sorted(list(set([_v(d.get("Model")) for d in disks]))))
+            
+            # Summiere RAID-Volumen für eine bessere Gesamtkapazitätsschätzung
+            total_raid_capacity_bytes = sum([int(_v(r.get("TotalCapacity", 0))) 
+                                             for r in inv_data.get("Raid", []) 
+                                             if _v(r.get("TotalCapacityUnit")) == "B"])
+            
+            # Wandel Bytes in TB um (1 TB = 10^12 Bytes für Marketing, oder 2^40 Bytes für binär)
+            # Wir nehmen 10^12 für eine glatte Darstellung
+            total_raid_capacity_tb = round(total_raid_capacity_bytes / (1000**4), 2)
+            
+            params["Storage Summary"] = f"{disk_count} disks ({disk_types}), {total_raid_capacity_tb}TB RAID capacity, models: {disk_models}"
+
+        # Firmware-Informationen (BIOS, iRMC)
+        for fw in inv_data.get("Firmware", []):
+            if _v(fw.get("Type")) == "BIOS":
+                params["BIOS Version"] = _v(fw.get("FirmwareVersion"))
+            elif _v(fw.get("Type")) == "iRMC":
+                params["iRMC Firmware Version"] = f"{_v(fw.get('Version'))} ({_v(fw.get('FirmwareVersion'))})"
+
+        # Health / Issues
+        disk_health_issues = [d for d in disks if _v(d.get("Health")) and _v(d.get("Health")) != "100"]
+        if disk_health_issues:
+             params["Hardware Issues"] = "Disk health warning or failure detected."
+             params["Disk Health Issues"] = f"{len(disk_health_issues)} disks report issues (e.g., predicted life left < 100%)."
+
+    # Lese die spezifischen, manuell getaggten Issues/Infos aus ism_nodes.json
+    description = _v(node.get("Description"))
+    if description:
+        params["Node Description"] = description
+        
+    hardware_issues_from_nodes = _v(node.get("HardwareIssues")) or "No specific hardware problems mentioned."
+    params.setdefault("Hardware Issues", hardware_issues_from_nodes) # Füge hinzu, falls nicht schon durch Disk Health gesetzt
+
+    # Bereinigung: Entferne leere oder redundante Einträge
+    final_params = {k: v for k, v in params.items() if v and v not in ("-", "None", "null", "NULL", "Not specified")}
+    return final_params
 
 
 # ============================================================
@@ -615,6 +718,7 @@ def main():
     cfg = load_config(Path(args.config))
     paths = cfg.get("paths", {})
     input_path = Path(paths.get("input", "agents/ISMAgent/data/ism_nodes.json"))
+    inventory_path = Path(paths.get("inventory", "agents/ISMAgent/data/ism_inventory.json"))
     output_path = Path(paths.get("output", "agents/ISMAgent/output/ism_nodes_report.txt"))
     ndjson_path = paths.get("ndjson", "agents/ISMAgent/logs/ism_agent.ndjson")
     dump_dir = Path(paths.get("dump_json_dir", "agents/ISMAgent/logs/node_json"))
@@ -628,14 +732,23 @@ def main():
     # Language selection
     lang = (args.language or cfg.get("language") or "en").strip().lower()
 
-    # Read nodes
+    # 1. Read nodes (ism_nodes.json - primary input)
     try:
         nodes = load_nodes(input_path)
     except Exception as e:
         if slog:
             slog.console("error", "main", ":startup", "Error", f"{e}", level="error")
         sys.exit(1)
-
+    
+    # 2. Load and map inventory data (ism_inventory.json)
+    try:
+        inventory_map = load_inventory_map(inventory_path)
+    except Exception as e:
+        if slog:
+            slog.console("error", "main", ":startup", "Error", f"Failed to load inventory map: {e}", level="error")
+        # Continue with empty inventory map if loading fails
+        inventory_map = {} 
+        
     # After successful read: archive input
     archive_input_file(input_path, archive_dir)
 
@@ -644,11 +757,13 @@ def main():
     for idx, node in enumerate(nodes, 1):
         node_name = node.get("Name", f"Node{idx}")
         try:
-            params = node_params(node)
+            # 3. Merge data using the new node_params function
+            params = node_params(node, inventory_map) 
             if slog:
                 slog.console("proc", "ism", ":process", "-", f"Processing node {idx}/{len(nodes)}: {node_name}")
                 slog.file_event(event="node_processing", node=node_name, index=idx)
 
+            # 4. Generate logical sentence
             text = generate_logical_sentence(params, lang, cfg, max_retries=5)
             results.append(text.strip())
 
@@ -697,12 +812,10 @@ def main():
     if wrote_ok:
         sftp_cfg = cfg.get("sftp") or {}
         if sftp_cfg.get("enabled", False):
-            # optional override of remote filename (passed into sftp_upload_file)
-            
             # Starte den Upload und speichere das Ergebnis (True/False)
             upload_ok = sftp_upload_file(output_path, sftp_cfg)
             
-            # NEU: Lösche die lokale Output-Datei, wenn der Upload erfolgreich war
+            # Lösche die lokale Output-Datei, wenn der Upload erfolgreich war
             if upload_ok:
                 try:
                     os.remove(output_path)
