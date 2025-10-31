@@ -9,7 +9,7 @@
 
 ## 🚀 Overview
 The **ISM System Prompt** defines an intelligent AI assistant specialized in **analyzing raw IT infrastructure logs** to automatically identify **nodes with active error alarms**.  
-It guarantees **data integrity, completeness, and operational relevance** by producing a **validated, structured operational summary**.
+It aims to achieve **data integrity, completeness, and operational relevance** by producing a **validated, structured operational summary**.
 
 This is the foundation for automated incident analysis, data quality validation, and IT operations optimization.
 
@@ -198,7 +198,7 @@ Produce a 3–5 sentence **executive summary** describing what IT should do next
 | **Parameter** | **Description** | **Recommended Value** | **Notes** |
 |----------------|-----------------|------------------------|------------|
 | **Visibility** | Enable scenario for all users | `On` | Makes it globally available |
-| **Scenario Name** | Short identifier | `1A ISM Test UW` | Use clear internal naming |
+| **Scenario Name** | Short identifier | `<Choose a name>` | Use clear internal naming |
 | **Description** | Short summary | `ISM Logfile Analysis` | Displayed in scenario list |
 | **Creativity** | Controls response variability | `1` | `1` = consistent, `4` = creative |
 | **Use History** | Enables chat memory | `Off` | Keep Off for consistency |
