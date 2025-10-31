@@ -1,13 +1,13 @@
-# ⚙️ ISM Prompt Suite – *Detecting Error State*
+# ISM Prompt Suite – *Detecting Error State*
 
 > **Purpose:** This documentation describes the complete prompt configuration for the ISM Logfile Analysis scenario.  
 > It includes the **System Prompt**, **User Pre-Prompt**, and **User Post-Prompt**, along with configuration parameters — enabling full automation of IT error detection and operational insight generation.
 
 ---
 
-# 🧠 ISM System Prompt – Detecting Error State
+# ISM System Prompt – Detecting Error State
 
-## 🚀 Overview
+## Overview
 The **ISM System Prompt** defines an intelligent AI assistant specialized in **analyzing raw IT infrastructure logs** to automatically identify **nodes with active error alarms**.  
 It aims to achieve **data integrity, completeness, and operational relevance** by producing a **validated, structured operational summary**.
 
@@ -15,16 +15,16 @@ This is the foundation for automated incident analysis, data quality validation,
 
 ---
 
-## 🎯 Objective
+## Objective
 Extract and summarize **all nodes currently in an Error state**, highlighting their **location, system category, operational status, and recommended actions**.
 
 The assistant scans unstructured log text, detects nodes with alarm errors, and outputs a **clean, structured, non-Markdown table** — ready for dashboards or operational reporting.
 
 ---
 
-## 🧩 Core Logic
+## Core Logic
 
-### 🔍 Error Detection Patterns
+### Error Detection Patterns
 ```
 Alarm Status: Error
 Alarm: Error
@@ -33,13 +33,13 @@ Alarm = Error
 ```
 (case-insensitive, including equivalent variants)
 
-### ✅ Completeness Rules
+### Completeness Rules
 - Every node with an Error alarm must appear in the output.  
 - Missing nodes trigger an automatic re-scan.  
 - No fabricated or inferred nodes (e.g., no “cx184” if only “cx183” exists).  
 - Duplicates are removed.
 
-### 🔒 Validity Rules
+### Validity Rules
 - Only nodes explicitly present in the input text are included.  
 - Missing fields → `N/A`.  
 - Each node listed once, in a single-line format.  
@@ -48,7 +48,7 @@ Alarm = Error
 
 ---
 
-## 📊 Output Specification
+## Output Specification
 
 ### Columns
 | # | Node Name | Category | Model | Location | Group | Alarm Status | Status | Power | Detected Issue | Recommended Action |
@@ -62,7 +62,7 @@ Alarm = Error
 
 ---
 
-## 🧮 Validation Workflow
+## Validation Workflow
 
 1. **Scan** input for all Error patterns.  
 2. **Extract** each unique node name linked to an Error alarm.  
@@ -72,7 +72,7 @@ Alarm = Error
 
 ---
 
-## 🧰 Example
+## Example
 
 ### Input
 ```
@@ -90,20 +90,20 @@ Node: cx184 | Model: R740 | Location: Berlin | Group: Core | Alarm: Error | Powe
 
 ---
 
-# 🧠 ISM User Pre-Prompt – Detecting Error State
+# ISM User Pre-Prompt – Detecting Error State
 
-## 🚀 Overview
+## Overview
 The **User Pre-Prompt** defines the intent and task focus within the ISM scenario.  
 It ensures the assistant delivers a **precise, actionable summary** of all nodes currently in an **Error** state — ready for immediate IT response.
 
 ---
 
-## 🎯 Objective
+## Objective
 Create a **focused operational summary** of error nodes, detailing **location**, **affected systems**, and **next actions**.
 
 ---
 
-## 🧩 Scope
+## Scope
 Include only:
 ```
 AlarmStatus = Error
@@ -117,7 +117,7 @@ AlarmStatus = Error
 
 ---
 
-## 📄 Deliverable
+## Deliverable
 A **non-Markdown structured table**, sorted by **Group** or **Location**.
 
 ### Output Rules
@@ -135,16 +135,16 @@ A **non-Markdown structured table**, sorted by **Group** or **Location**.
 
 ---
 
-# 🧠 ISM User Post-Prompt – Detecting Error State
+# ISM User Post-Prompt – Detecting Error State
 
-## 🚀 Overview
+## Overview
 The **User Post-Prompt** finalizes the output process by performing **data validation**, **impact summarization**, and **executive-level action recommendations**.
 
 It ensures that what’s reported is **accurate**, **verified**, and **ready for decision-making**.
 
 ---
 
-## 🎯 Objective
+## Objective
 After the table is generated:
 1. **Validate** that the number of Error nodes matches the table rows.  
 2. **Summarize** which groups or systems are most impacted.  
@@ -152,26 +152,26 @@ After the table is generated:
 
 ---
 
-## 🧩 Functional Steps
+## Functional Steps
 
-### ✅ Validation Phase
+### Validation Phase
 - Recount `Alarm Status: Error` nodes in the source text.  
 - Ensure count matches the number of output rows.  
 - Report missing, duplicate, or extra nodes.
 
-### 📊 Summary Phase
+### Summary Phase
 Summarize:
 - Total affected nodes  
 - Most impacted Groups / Locations  
 - Common issue patterns (e.g., power, RAM, chassis)  
 - Critical nodes (`Power = Off` and `Status = Error`)
 
-### 💡 Insight Phase
+### Insight Phase
 Produce a 3–5 sentence **executive summary** describing what IT should do next.
 
 ---
 
-## 🧾 Output Format
+## Output Format
 
 ### Structure
 1. Validated Table (structured, not Markdown)  
@@ -193,7 +193,7 @@ Produce a 3–5 sentence **executive summary** describing what IT should do next
 
 ---
 
-# ⚙️ Scenario Parameter Configuration
+# Scenario Parameter Configuration
 
 | **Parameter** | **Description** | **Recommended Value** | **Notes** |
 |----------------|-----------------|------------------------|------------|
@@ -211,7 +211,7 @@ Produce a 3–5 sentence **executive summary** describing what IT should do next
 
 ---
 
-## 🧭 Full ISM Prompt Workflow
+## Full ISM Prompt Workflow
 ```
 System Prompt → Context Input → User Pre-Prompt → Chat Message → User Post-Prompt
 ```

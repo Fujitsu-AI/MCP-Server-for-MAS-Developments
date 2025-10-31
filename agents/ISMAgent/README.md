@@ -37,7 +37,7 @@ It uses structured, emoji-safe logging for clean console and NDJSON outputs, and
 ## How It Works
 
 1. **Configuration Loading**  
-   The agent loads `agents/ISMAgent/config.json`.
+   The agent loads `config.json`.
 
 2. **Health Check (optional)**  
    If `chatbot_agent.health_url` is provided, a quick GET is performed (non-blocking).
