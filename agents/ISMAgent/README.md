@@ -67,10 +67,19 @@ It uses structured, emoji-safe logging for clean console and NDJSON outputs, and
 
 Create or edit `agents/ISMAgent/config.json`. Minimal structure:
 
+## 🧾 Configuration Reference (Parameters within `<>` have to be set according your configuration)
+
 ```json
 {
+  "meta": {
+    "agent_name": "ISM Agent",
+    "version": "1.0.1",
+    "created": "2025-10-30",
+    "description": "Fixed configuration for the ISM Agent demo setup."
+  },
   "paths": {
     "input": "agents/ISMAgent/data/ism_nodes.json",
+    "inventory": "agents/ISMAgent/data/ism_inventory.json",
     "output": "agents/ISMAgent/output/ism_nodes_report.txt",
     "ndjson": "agents/ISMAgent/logs/ism_agent.ndjson",
     "dump_json_dir": "agents/ISMAgent/logs/node_json",
@@ -78,26 +87,25 @@ Create or edit `agents/ISMAgent/config.json`. Minimal structure:
   },
   "chatbot_agent": {
     "api_url": "http://127.0.0.1:5001/ask",
-    "api_key": "YOUR_SECURE_API_KEY",
-    "use_public": true,
-    "groups": [],
+    "api_key": "<API_KEY>",
+    "use_public": false,
+    "groups": ["<YOUR GROUP 1>", "<YOUR GROUP 2>", "<YOUR GROUP xyz>"],
     "timeout_seconds": 20,
-    "prompt_template": "Please provide a detailed, single-paragraph technical summary in {language_code} for the following infrastructure node data. Focus on the status and versions. Node data: {json_data}"
+    "prompt_template": "Generate a concise, detailed technical report in a single paragraph (in {language_code}) based on the merged node data. Explicitly include the Model, Status, CPU Summary (count, model, speed), Memory Summary (total size, frequency), Storage Summary (type, capacity), Supported OS List, Firmware Details, and any detected Hardware Issues or Alerts (AlarmStatus). Node data: {json_data}"
   },
-  },
-  "language": "en",
-
   "sftp": {
     "enabled": true,
-    "host": "sftp.example.org",
-    "port": 22,
-    "username": "user1",
-    "password": "strong-password",
-    "remote_path": "/upload/ism/reports",
+    "host": "<SFTP_HOST>",
+    "port": <PORT>,
+    "username": "<SFTP_USER>",
+    "password": "<SFTP_PASSWORD>",
+    "remote_path": "/<GROUP_NAME>",
     "remote_filename": null
-  }
+  },
+  "language": "en"
 }
 ```
+
 
 ### SFTP Options (details)
 
