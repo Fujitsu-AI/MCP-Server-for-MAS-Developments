@@ -7,6 +7,7 @@
   },
   "paths": {
     "input": "agents/ISMAgent/data/ism_nodes.json",
+    "inventory": "agents/ISMAgent/data/ism_inventory.json", 
     "output": "agents/ISMAgent/output/ism_nodes_report.txt",
     "ndjson": "agents/ISMAgent/logs/ism_agent.ndjson",
     "dump_json_dir": "agents/ISMAgent/logs/node_json",

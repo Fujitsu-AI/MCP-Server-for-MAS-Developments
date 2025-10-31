@@ -1,0 +1,14 @@
+Objective:
+Generate a focused operational summary of all nodes currently in Error state, highlighting their location, affected systems, and next actions required.
+
+Scope:
+Include only nodes with AlarmStatus = Error, showing:
+
+Identification (Node, Type, Model, Location, Group)
+Current operational and power status
+Detected or inferred issue
+
+Recommended next step
+
+Deliverable:
+A concise, human-readable structured table (not Markdown), sorted by Group or Location, enabling IT staff to see at a glance where action is needed.

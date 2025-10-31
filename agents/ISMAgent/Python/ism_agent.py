@@ -8,6 +8,7 @@
 # - After successful input read: archive input with sequential extension
 # - NEW: Optional SFTP upload of the output file after completion
 # - NEW: Delete local output file upon successful SFTP upload
+# - NEW: logge Dauer zwischen chatbot request und response
 # ============================================================
 
 import json
@@ -24,7 +25,7 @@ from typing import Any, Dict, List, Optional
 
 import requests
 from colorama import init as colorama_init, Fore, Style
-from wcwidth import wcswidth # emoji/wide-char aware width calc
+from wcwidth import wcswidth  # emoji/wide-char aware width calc
 
 # NEW: SFTP deps
 import paramiko
@@ -34,10 +35,10 @@ import posixpath
 # OPTIONAL: AgentInterface (PrivateGPT) – best-effort imports
 # ------------------------------------------------------------
 try:
-    from ...AgentInterface.Python.agent import PrivateGPTAgent, GroupValidationError
-    from ...AgentInterface.Python.config import Config as PGPTConfig, ConfigError as PGPTConfigError
-    from ...AgentInterface.Python.language import languages as pgpt_languages
-    from ...AgentInterface.Python.color import Color
+    from .AgentInterface.Python.agent import PrivateGPTAgent, GroupValidationError
+    from .AgentInterface.Python.config import Config as PGPTConfig, ConfigError as PGPTConfigError
+    from .AgentInterface.Python.language import languages as pgpt_languages
+    from .AgentInterface.Python.color import Color
     _HAS_AGENT_IFACE = True
 except Exception:
     _HAS_AGENT_IFACE = False
@@ -52,14 +53,14 @@ class StructuredLog:
     COL_TIME = 19
     COL_ICON = 4
     COL_COMP = 12
-    COL_ACT  = 14
-    COL_DIR  = 9
+    COL_ACT = 14
+    COL_DIR = 9
 
     LEVEL_ICONS = {
-        "DEBUG":    "🐛",
-        "INFO":     "ℹ️",
-        "WARNING":  "⚠️",
-        "ERROR":    "❌",
+        "DEBUG": "🐛",
+        "INFO": "ℹ️",
+        "WARNING": "⚠️",
+        "ERROR": "❌",
         "CRITICAL": "‼️",
     }
 
@@ -89,44 +90,76 @@ class StructuredLog:
             vis = len(s)
         return s + " " * max(0, width - vis)
 
+    @staticmethod
+    def _pad_raw_right_aligned(s: str, width: int) -> str:
+        """Pad string to visual width 'width', right-aligned."""
+        s = (s or "")
+        vis = wcswidth(s)
+        if vis < 0:
+            vis = len(s)
+        return " " * max(0, width - vis) + s
+
     def _white(self, text: str) -> str:
-        """Force bright white output for all columns (icons keep native glyph color)."""
+        """Force bright white output for all columns."""
         if not self.use_color:
             return text
         return f"{Style.BRIGHT}{Fore.WHITE}{text}{Style.RESET_ALL}"
 
     def _icon(self, kind: str, level: Optional[str] = None) -> str:
-        """Return an icon (emoji + trailing space). If 'level' is given, prefer level icon."""
+        """Return an icon (emoji + trailing pipe)."""
         if level:
             lvl = level.upper()
             if lvl in self.LEVEL_ICONS:
                 return self.LEVEL_ICONS[lvl] + " |"
         return "ℹ️ |"
 
+    # >>> FIXED HERE <<< (kein level mehr!)
     def _line(self, icon: str, component: str, action: str, direction: str, message: str) -> str:
-        t_col   = self._pad_raw(self._ts(), self.COL_TIME)
-        i_col   = self._pad_raw(icon, self.COL_ICON)
-        c_col   = self._pad_raw(component, self.COL_COMP)
-        a_col   = self._pad_raw(action,    self.COL_ACT)
-        d_col   = self._pad_raw(direction, self.COL_DIR)
-        msg_col = message or ""
+        # icon ist bereits fertig (z. B. "ℹ️ |" oder "‼️ |")
+        t_col = self._pad_raw(self._ts(), self.COL_TIME)
+        i_col = self._pad_raw(icon, self.COL_ICON)
+        c_col = self._pad_raw(component, self.COL_COMP)
+        a_col = self._pad_raw(action, self.COL_ACT)
 
-        c_col   = self._white(c_col)
-        a_col   = self._white(a_col)
-        d_col   = self._white(d_col)
-        msg_col = self._white(msg_col)
+        # bestimmte Felder rechtsbündig
+        if (
+            component.lower() == "filesystem" and (action == ":write" or action == ":append")
+        ) or (component.lower() == "ism" and action == ":process"):
+            d_col = self._pad_raw_right_aligned(direction, self.COL_DIR)
+        else:
+            d_col = self._pad_raw(direction, self.COL_DIR)
 
-        return "".join([
-            t_col, " | ",
-            i_col, " ",
-            c_col, " ",
-            a_col, " ",
-            d_col, " | ",
-            msg_col,
-        ])
+        c_col = self._white(c_col)
+        a_col = self._white(a_col)
+        d_col = self._white(d_col)
+        msg_col = self._white(message or "")
+
+        return "".join(
+            [
+                t_col,
+                " | ",
+                i_col,
+                " ",
+                c_col,
+                " ",
+                a_col,
+                " ",
+                d_col,
+                " | ",
+                msg_col,
+            ]
+        )
 
     # ---------------- public API ----------------
-    def console(self, icon_kind: str, component: str, action: str, direction: str, message: str, level: str = "info") -> None:
+    def console(
+        self,
+        icon_kind: str,
+        component: str,
+        action: str,
+        direction: str,
+        message: str,
+        level: str = "info",
+    ) -> None:
         line = self._line(self._icon(icon_kind, level), component, action, direction, message)
         lvl = (level or "info").lower()
         if lvl == "error":
@@ -180,29 +213,21 @@ def load_config(path: Path) -> Dict[str, Any]:
     chatbot.setdefault("use_public", True)
     chatbot.setdefault("groups", [])
     chatbot.setdefault("timeout_seconds", 20)
-    
-    # NEU: Standard-Prompt-Template hinzufügen (für Konfigurations-Unabhängigkeit)
-    default_prompt = (
-        "prompt_template parameter not set. Repeat this sentence."
-    )
-    chatbot.setdefault("prompt_template", default_prompt)
-    data["chatbot_agent"] = chatbot # Update data with chatbot defaults
+    chatbot.setdefault("prompt_template", "prompt_template parameter not set. Repeat this sentence.")
+    data["chatbot_agent"] = chatbot
 
     data.setdefault("language", "en")
 
-    # Paths block is expected but optional; defaults below if missing.
     paths = data.get("paths", {})
     paths.setdefault("input", "agents/ISMAgent/data/ism_nodes.json")
-    # Hinzugefügter Pfad für die Inventardaten
-    paths.setdefault("inventory", "agents/ISMAgent/data/ism_inventory.json") 
+    paths.setdefault("inventory", "agents/ISMAgent/data/ism_inventory.json")
     paths.setdefault("output", "agents/ISMAgent/output/ism_nodes_report.txt")
     paths.setdefault("ndjson", "agents/ISMAgent/logs/ism_agent.ndjson")
     paths.setdefault("dump_json_dir", "agents/ISMAgent/logs/node_json")
-    # NEW: archive directory default
     paths.setdefault("archive_dir", "agents/ISMAgent/archive")
     data["paths"] = paths
 
-    # NEW: SFTP defaults (optional)
+    # optionale SFTP-Konfig
     sftp = data.get("sftp", {})
     if sftp:
         sftp.setdefault("enabled", True)
@@ -214,7 +239,6 @@ def load_config(path: Path) -> Dict[str, Any]:
     return data
 
 
-# ---------- PDF with embedded JSON (optional input format) ----------
 def _parse_pdf_json(pdf_path: Path) -> Dict[str, Any]:
     try:
         import PyPDF2
@@ -230,7 +254,7 @@ def _parse_pdf_json(pdf_path: Path) -> Dict[str, Any]:
     start, end = full.find("{"), full.rfind("}")
     if start == -1 or end == -1 or end <= start:
         raise ValueError(f"No JSON found inside PDF: {pdf_path}")
-    json_text = full[start:end + 1]
+    json_text = full[start : end + 1]
     json_text = re.sub(r"-\n", "", json_text)
     json_text = re.sub(r"[ \t\r\f\v]+", " ", json_text)
     try:
@@ -283,22 +307,35 @@ def load_nodes(path: Path) -> List[Dict[str, Any]]:
     return nodes
 
 
-# NEU: Funktion zum Laden und Mappen der Inventardaten
 def load_inventory_map(path: Path) -> Dict[int, Dict[str, Any]]:
     if slog:
         slog.console("info", "ism", ":filesystem", "read", f"Reading inventory file: {path}")
 
     if not path.exists():
         if slog:
-            slog.console("error", "ism", ":filesystem", "Error", f"Inventory file not found: {path}", level="error")
-        raise FileNotFoundError(f"Inventory file not found: {path}")
+            slog.console(
+                "warning",
+                "ism",
+                ":filesystem",
+                "Warn",
+                f"Inventory file not found: {path}. Continuing without detailed inventory.",
+                level="warning",
+            )
+        return {}
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as e:
         if slog:
-            slog.console("error", "ism", ":json", "Error", f"Invalid JSON in inventory: {e}", level="error")
-        raise
+            slog.console(
+                "error",
+                "ism",
+                ":json",
+                "Error",
+                f"Invalid JSON in inventory: {e}. Continuing with empty inventory.",
+                level="error",
+            )
+        return {}
 
     nodes = (data.get("IsmBody") or {}).get("Nodes") or []
     inventory_map = {}
@@ -306,9 +343,8 @@ def load_inventory_map(path: Path) -> Dict[int, Dict[str, Any]]:
     for node in nodes:
         node_id = node.get("NodeId")
         if node_id is not None:
-            # Speichere die VariableData, die die meisten Details enthält
             inventory_map[int(node_id)] = node.get("VariableData", {})
-    
+
     if slog:
         slog.console("info", "ism", ":json", "-", f"{len(inventory_map)} inventory details mapped.")
         slog.file_event(event="inventory_mapped", count=len(inventory_map), source=str(path))
@@ -340,16 +376,13 @@ def _v(x: Any) -> str:
     if x is None:
         return ""
     s = str(x).strip()
-    return s if s and s not in ("-", "None", "null", "NULL") else ""
+    return s if s and s not in ("-", "None", "null", "NULL") and not s.endswith(" -") else ""
 
 
 def node_params(node: Dict[str, Any], inventory_map: Dict[int, Dict[str, Any]]) -> Dict[str, Any]:
-    # Lade die Basis-Daten aus ism_nodes.json
     node_id = int(node.get("NodeId", 0))
-    # Versuche, die Inventardaten zu laden
     inv_data = inventory_map.get(node_id, {})
 
-    # Initialisiere Basis-Parameter aus ism_nodes.json
     params = {
         "Node Name": _v(node.get("Name")),
         "NodeId": _v(node.get("NodeId")),
@@ -365,19 +398,18 @@ def node_params(node: Dict[str, Any], inventory_map: Dict[int, Dict[str, Any]]) 
         "Node Group": _v(node.get("NodeGroupName")),
     }
 
-    # ------------------------------------------------------------
-    # Füge detaillierte Inventardaten aus ism_inventory.json hinzu
-    # ------------------------------------------------------------
     if inv_data:
-        # Extrahiere Hardware-Informationen (Beispiele: CPUs, Memory, Disks)
         cpus = inv_data.get("Cpus", [])
         if cpus:
             cpu_model = _v(cpus[0].get("Model"))
             cpu_core_speed = _v(cpus[0].get("CoreSpeed"))
             cpu_count = len(cpus)
-            params["CPU Summary"] = f"{cpu_count}x {cpu_model} @ {_v(cpu_core_speed)}MHz"
-            
-        memory_modules = [m for m in inv_data.get("MemoryModules", []) if m.get("MemorySize")]
+            if cpu_model and cpu_core_speed:
+                params["CPU Summary"] = f"{cpu_count}x {cpu_model} @ {_v(cpu_core_speed)}MHz"
+            elif cpu_count > 0:
+                params["CPU Summary"] = f"{cpu_count}x CPU (Details missing)"
+
+        memory_modules = [m for m in inv_data.get("MemoryModules", []) if _v(m.get("MemorySize"))]
         total_mem_gb = 0
         if memory_modules:
             for m in memory_modules:
@@ -387,7 +419,6 @@ def node_params(node: Dict[str, Any], inventory_map: Dict[int, Dict[str, Any]]) 
                         total_mem_gb += int(size_str.replace("GB", "").strip())
                     except ValueError:
                         pass
-            
             if total_mem_gb > 0:
                 mem_freq = _v(memory_modules[0].get("Frequency"))
                 params["Memory Summary"] = f"{len(memory_modules)} physical modules, {total_mem_gb}GB total RAM @ {mem_freq}"
@@ -395,42 +426,59 @@ def node_params(node: Dict[str, Any], inventory_map: Dict[int, Dict[str, Any]]) 
         disks = inv_data.get("Disks", [])
         if disks:
             disk_count = len(disks)
-            disk_types = ", ".join(sorted(list(set([_v(d.get("MediaType")) for d in disks]))))
-            disk_models = ", ".join(sorted(list(set([_v(d.get("Model")) for d in disks]))))
-            
-            # Summiere RAID-Volumen für eine bessere Gesamtkapazitätsschätzung
-            total_raid_capacity_bytes = sum([int(_v(r.get("TotalCapacity", 0))) 
-                                             for r in inv_data.get("Raid", []) 
-                                             if _v(r.get("TotalCapacityUnit")) == "B"])
-            
-            # Wandel Bytes in TB um (1 TB = 10^12 Bytes für Marketing, oder 2^40 Bytes für binär)
-            # Wir nehmen 10^12 für eine glatte Darstellung
+            disk_types = ", ".join(
+                sorted(list(set([_v(d.get("MediaType")) for d in disks if _v(d.get("MediaType"))])))
+            )
+            disk_models = ", ".join(
+                sorted(list(set([_v(d.get("Model")) for d in disks if _v(d.get("Model"))])))
+            )
+            total_raid_capacity_bytes = sum(
+                [
+                    int(_v(r.get("TotalCapacity", 0)))
+                    for r in inv_data.get("Raid", [])
+                    if _v(r.get("TotalCapacityUnit")) == "B"
+                ]
+            )
             total_raid_capacity_tb = round(total_raid_capacity_bytes / (1000**4), 2)
-            
-            params["Storage Summary"] = f"{disk_count} disks ({disk_types}), {total_raid_capacity_tb}TB RAID capacity, models: {disk_models}"
+            if disk_types or disk_models or total_raid_capacity_bytes > 0:
+                params["Storage Summary"] = (
+                    f"{disk_count} disks ({disk_types}), "
+                    f"{total_raid_capacity_tb}TB RAID capacity, models: {disk_models}"
+                )
 
-        # Firmware-Informationen (BIOS, iRMC)
+        os_list = inv_data.get("ElcmStatus", {}).get("SupportedOsList", [])
+        if os_list:
+            supported_os = ", ".join(
+                sorted(list(set([_v(os.get("OsType")) for os in os_list if _v(os.get("OsType"))])))
+            )
+            if supported_os:
+                params["Supported OS List"] = supported_os
+
+        firmware_details = []
         for fw in inv_data.get("Firmware", []):
-            if _v(fw.get("Type")) == "BIOS":
-                params["BIOS Version"] = _v(fw.get("FirmwareVersion"))
-            elif _v(fw.get("Type")) == "iRMC":
-                params["iRMC Firmware Version"] = f"{_v(fw.get('Version'))} ({_v(fw.get('FirmwareVersion'))})"
+            fw_type = _v(fw.get("Type"))
+            fw_version = _v(fw.get("FirmwareVersion"))
+            fw_model = _v(fw.get("Model"))
+            if fw_type and fw_version:
+                detail = f"{fw_model or 'Unknown'} {fw_type}: {fw_version}"
+                firmware_details.append(detail)
+        if firmware_details:
+            params["Firmware Details"] = "; ".join(firmware_details)
 
-        # Health / Issues
-        disk_health_issues = [d for d in disks if _v(d.get("Health")) and _v(d.get("Health")) != "100"]
+        disk_health_issues = [d for d in disks if _v(d.get("Health")) and int(_v(d.get("Health"))) < 100]
         if disk_health_issues:
-             params["Hardware Issues"] = "Disk health warning or failure detected."
-             params["Disk Health Issues"] = f"{len(disk_health_issues)} disks report issues (e.g., predicted life left < 100%)."
+            params["Hardware Issues"] = "Disk health warning or failure detected."
+            params["Disk Health Issues"] = (
+                f"{len(disk_health_issues)} disks report issues (e.g., predicted life left < 100%)."
+            )
 
-    # Lese die spezifischen, manuell getaggten Issues/Infos aus ism_nodes.json
     description = _v(node.get("Description"))
     if description:
         params["Node Description"] = description
-        
-    hardware_issues_from_nodes = _v(node.get("HardwareIssues")) or "No specific hardware problems mentioned."
-    params.setdefault("Hardware Issues", hardware_issues_from_nodes) # Füge hinzu, falls nicht schon durch Disk Health gesetzt
 
-    # Bereinigung: Entferne leere oder redundante Einträge
+    hardware_issues_from_nodes = _v(node.get("HardwareIssues")) or "No specific hardware problems mentioned."
+    params.setdefault("Hardware Issues", hardware_issues_from_nodes)
+
     final_params = {k: v for k, v in params.items() if v and v not in ("-", "None", "null", "NULL", "Not specified")}
     return final_params
 
@@ -449,11 +497,9 @@ def generate_logical_sentence(
 ) -> str:
     attempt = 0
     last_error = None
-    
-    # Lese das Prompt-Template aus der Konfiguration
+
     prompt_template = config.get("chatbot_agent", {}).get("prompt_template")
     if not prompt_template:
-        # Sollte nicht passieren, wenn load_config korrekt ist
         prompt_template = (
             "Generate a fluent, well-written paragraph in {language_code} describing the following node. "
             "It should read like a technical report (no tables or bullet points). "
@@ -461,11 +507,9 @@ def generate_logical_sentence(
             "{json_data}"
         )
 
-    # Erstelle den finalen Prompt durch Ersetzen der Platzhalter
-    # Hier: {language_code} und {json_data}
     prompt = prompt_template.format(
         language_code=language_code.upper(),
-        json_data=json.dumps(parameters, ensure_ascii=False, indent=4)
+        json_data=json.dumps(parameters, ensure_ascii=False, indent=4),
     )
 
     if use_public is None:
@@ -490,7 +534,7 @@ def generate_logical_sentence(
                 "language": "fipa-sl",
                 "ontology": "fujitsu-iot-ontology",
                 "content": {
-                    "question": prompt, # Verwende den aus der Config generierten Prompt
+                    "question": prompt,
                     "usePublic": use_public,
                     "groups": groups,
                     "language": language_code or config.get("language", "en"),
@@ -506,11 +550,27 @@ def generate_logical_sentence(
                 slog.console("cb", "chatbot", ":request", "Outgoing", f"Request for node: {node_name}")
                 slog.file_event(event="request", component="chatbot_agent", node=node_name)
 
+            # >>> NEU: Zeitmessung
+            t_start = time.perf_counter()
             response = requests.post(api_url, json=payload, headers=headers, timeout=timeout_sec)
+            t_end = time.perf_counter()
+            elapsed = t_end - t_start  # Sekunden als float
 
             if slog:
-                slog.console("cb", "chatbot", ":response", "Incoming", f"{response.status_code}")
-                slog.file_event(event="response", status=response.status_code, node=node_name)
+                slog.console(
+                    "cb",
+                    "chatbot",
+                    ":response",
+                    "Incoming",
+                    f"{response.status_code} ({elapsed:.3f}s)",
+                )
+                slog.file_event(
+                    event="response",
+                    status=response.status_code,
+                    node=node_name,
+                    elapsed_seconds=round(elapsed, 3),
+                )
+            # <<< ENDE NEU
 
             if response.status_code != 200:
                 try:
@@ -574,25 +634,37 @@ def dump_node_json(
         "answer": answer,
         "timestamp": ts,
     }
-    (dump_dir / fname).write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    json_text = json.dumps(payload, ensure_ascii=False, indent=2)
+    dump_length_bytes = len(json_text.encode("utf-8"))
+
+    (dump_dir / fname).write_text(json_text, encoding="utf-8")
+
     if slog:
-        slog.console("file", "filesystem", ":write", "-", f"Record added to {dump_dir.name}/{fname}")
-        slog.file_event(event="node_dump_written", file=str(dump_dir / fname), node=node_name)
+        slog.console(
+            "file",
+            "filesystem",
+            ":write",
+            str(dump_length_bytes) + " B",
+            f"Record added to {dump_dir.name}/{fname}",
+        )
+        slog.file_event(
+            event="node_dump_written",
+            file=str(dump_dir / fname),
+            node=node_name,
+            size=dump_length_bytes,
+        )
 
 
 # ============================================================
 # Input Archiving helpers
 # ============================================================
 def _next_archive_path(src: Path, archive_dir: Path) -> Path:
-    """
-    Determine next archive filename:
-    <original-name>.<NNN> (e.g., ism_nodes.json.001, .002, ...)
-    """
     archive_dir.mkdir(parents=True, exist_ok=True)
-    stem_with_suffix = src.name  # full name incl. .json/.pdf
+    stem_with_suffix = src.name
     max_idx = 0
     for p in archive_dir.glob(stem_with_suffix + ".*"):
-        suf = p.suffix  # e.g. ".001"
+        suf = p.suffix
         if len(suf) >= 2 and suf[1:].isdigit():
             try:
                 idx = int(suf[1:])
@@ -605,13 +677,7 @@ def _next_archive_path(src: Path, archive_dir: Path) -> Path:
 
 
 def archive_input_file(src: Path, archive_dir: Path) -> Optional[Path]:
-    """
-    Move input file into archive with sequential extension.
-    Archive only if src exists and isn't already inside archive_dir.
-    Return target path or None if skipped.
-    """
     try:
-        # Skip if already inside archive_dir
         try:
             src.resolve().relative_to(archive_dir.resolve())
             return None
@@ -634,12 +700,9 @@ def archive_input_file(src: Path, archive_dir: Path) -> Optional[Path]:
 
 
 # ============================================================
-# NEW: SFTP helpers (inspired by iot_mqtt_agent.py)  
+# NEW: SFTP helpers
 # ============================================================
 def _sftp_mkdirs(sftp: paramiko.SFTPClient, remote_dir: str) -> None:
-    """
-    Recursively ensure that remote_dir exists (POSIX).
-    """
     remote_dir = posixpath.normpath(remote_dir)
     parts = [p for p in remote_dir.split("/") if p]
     path = "/"
@@ -651,24 +714,23 @@ def _sftp_mkdirs(sftp: paramiko.SFTPClient, remote_dir: str) -> None:
             sftp.mkdir(path)
             sftp.chdir(path)
 
-def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
-    """
-    Upload local_path to SFTP server into sftp_cfg['remote_path'].
-    If 'remote_filename' is set, use it; otherwise keep basename.
-    """
-    host = sftp_cfg.get("host")
-    port = int(sftp_cfg.get("port", 22))
-    user = sftp_cfg.get("username")
-    pwd  = sftp_cfg.get("password")
-    remote_base = sftp_cfg.get("remote_path", "/")
-    remote_name = sftp_cfg.get("remote_filename") or os.path.basename(str(local_path))
 
-    if not (host and user and pwd and remote_base):
+def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
+    enabled = sftp_cfg.get("enabled", False)
+    host = sftp_cfg.get("host")
+    user = sftp_cfg.get("user") or sftp_cfg.get("username")
+    pwd = sftp_cfg.get("password")
+    port = int(sftp_cfg.get("port", 22))
+    remote_base = sftp_cfg.get("remote_path", "/")
+    remote_name = sftp_cfg.get("remote_filename") or local_path.name
+
+    if not enabled or not host or not user or not pwd:
         if slog:
-            slog.console("warning", "sftp", ":config", "Skip", "Incomplete SFTP config; skipping upload.", level="warning")
+            slog.console("warning", "sftp", ":config", "Skip", "SFTP enabled but config incomplete.", level="warning")
             slog.file_event(event="sftp_skipped", reason="incomplete_config")
         return False
 
+    transport = None
     try:
         if slog:
             slog.console("info", "sftp", ":connect", "Outgoing", f"{user}@{host}:{port}")
@@ -676,7 +738,6 @@ def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
         transport.connect(username=user, password=pwd)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
-        # ensure directory exists
         _sftp_mkdirs(sftp, remote_base)
 
         remote_path = posixpath.join(remote_base, remote_name)
@@ -693,10 +754,11 @@ def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
         if slog:
             slog.console("error", "sftp", ":put", "Error", f"{e}", level="error")
             slog.file_event(event="sftp_upload_failed", local=str(local_path), error=str(e))
-        try:
-            transport.close()
-        except Exception:
-            pass
+        if transport:
+            try:
+                transport.close()
+            except Exception:
+                pass
         return False
 
 
@@ -705,16 +767,15 @@ def sftp_upload_file(local_path: Path, sftp_cfg: Dict[str, Any]) -> bool:
 # ============================================================
 def main():
     parser = argparse.ArgumentParser(description="ISM Agent – robust generator for ISM nodes.")
-    parser.add_argument("--config", default="agents/ISMAgent/config.json", help="Path to config.json (default: agents/ISMAgent/config.json)")
+    parser.add_argument("--config", default="agents/ISMAgent/config.json", help="Path to config.json")
     parser.add_argument("--language", help="Override language from config (optional)")
-    parser.add_argument("--delay", type=float, default=0.5, help="Seconds to wait between requests (default 0.5)")
+    parser.add_argument("--delay", type=float, default=0.5, help="Seconds to wait between requests")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging")
     args = parser.parse_args()
 
     setup_logging(args.verbose)
     global slog
 
-    # Load config & paths
     cfg = load_config(Path(args.config))
     paths = cfg.get("paths", {})
     input_path = Path(paths.get("input", "agents/ISMAgent/data/ism_nodes.json"))
@@ -726,30 +787,26 @@ def main():
 
     slog = StructuredLog(ndjson_path, use_color=True)
 
-    # Optional health check
     check_server_health(cfg)
 
-    # Language selection
     lang = (args.language or cfg.get("language") or "en").strip().lower()
 
-    # 1. Read nodes (ism_nodes.json - primary input)
     try:
         nodes = load_nodes(input_path)
+    except FileNotFoundError as e:
+        if slog:
+            slog.console("critical", "main", ":fatal", "Error", f"Fatal: Missing primary input file. {e}", level="critical")
+        sys.exit(1)
     except Exception as e:
         if slog:
-            slog.console("error", "main", ":startup", "Error", f"{e}", level="error")
+            slog.console("critical", "main", ":fatal", "Error", f"Fatal: Error loading nodes. {e}", level="critical")
         sys.exit(1)
-    
-    # 2. Load and map inventory data (ism_inventory.json)
+
     try:
         inventory_map = load_inventory_map(inventory_path)
-    except Exception as e:
-        if slog:
-            slog.console("error", "main", ":startup", "Error", f"Failed to load inventory map: {e}", level="error")
-        # Continue with empty inventory map if loading fails
-        inventory_map = {} 
-        
-    # After successful read: archive input
+    except Exception:
+        inventory_map = {}
+
     archive_input_file(input_path, archive_dir)
 
     results: List[str] = []
@@ -757,48 +814,48 @@ def main():
     for idx, node in enumerate(nodes, 1):
         node_name = node.get("Name", f"Node{idx}")
         try:
-            # 3. Merge data using the new node_params function
-            params = node_params(node, inventory_map) 
+            params = node_params(node, inventory_map)
+            counter_str = f"{idx}/{len(nodes)}"
+
             if slog:
-                slog.console("proc", "ism", ":process", "-", f"Processing node {idx}/{len(nodes)}: {node_name}")
+                slog.console("proc", "ism", ":process", counter_str, f"Processing node: {node_name}")
                 slog.file_event(event="node_processing", node=node_name, index=idx)
 
-            # 4. Generate logical sentence
             text = generate_logical_sentence(params, lang, cfg, max_retries=5)
             results.append(text.strip())
 
             dump_node_json(dump_dir, idx, node_name, params, text)
+
             time.sleep(max(0.0, float(args.delay)))
         except Exception as e:
             if slog:
                 slog.console("error", "ism", ":process", "Error", f"{node_name}: {e}", level="error")
                 slog.file_event(event="node_failed", node=node_name, error=str(e))
-            # continue with next node
+            # continue
 
     if not results:
         if slog:
             slog.console("error", "main", ":report", "Error", "No report could be generated.", level="error")
         sys.exit(2)
 
-    # ─────────────────────────────────────────────────────────
-    # Write report (Append-if-exists, Create-if-missing)
-    # ─────────────────────────────────────────────────────────
     wrote_ok = False
     try:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         out_text = "\n\n".join(results).rstrip() + "\n"
+        output_length_bytes = len(out_text.encode("utf-8"))
+        byte_output_str = str(output_length_bytes) + "B"
 
         if output_path.exists():
             with open(output_path, "a", encoding="utf-8") as f:
                 f.write(out_text)
             if slog:
-                slog.console("file", "filesystem", ":append", "-", f"Appended {len(out_text)} bytes to: {output_path}")
+                slog.console("file", "filesystem", ":append", byte_output_str, f"Appended {output_length_bytes} bytes to: {output_path}")
                 slog.file_event(event="report_appended", path=str(output_path), size=len(out_text))
         else:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(out_text)
             if slog:
-                slog.console("file", "filesystem", ":write", "-", f"Report created: {output_path}")
+                slog.console("file", "filesystem", ":write", byte_output_str, f"Report created: {output_path}")
                 slog.file_event(event="report_written", path=str(output_path), size=len(out_text))
         wrote_ok = True
     except Exception as e:
@@ -806,16 +863,11 @@ def main():
             slog.console("error", "filesystem", ":write", "Error", f"{e}", level="error")
         sys.exit(3)
 
-    # ─────────────────────────────────────────────────────────
-    # SFTP upload and subsequent deletion of the local file
-    # ─────────────────────────────────────────────────────────
     if wrote_ok:
         sftp_cfg = cfg.get("sftp") or {}
         if sftp_cfg.get("enabled", False):
-            # Starte den Upload und speichere das Ergebnis (True/False)
             upload_ok = sftp_upload_file(output_path, sftp_cfg)
-            
-            # Lösche die lokale Output-Datei, wenn der Upload erfolgreich war
+
             if upload_ok:
                 try:
                     os.remove(output_path)
@@ -826,15 +878,13 @@ def main():
                     if slog:
                         slog.console("error", "filesystem", ":delete", "Error", f"Failed to delete local report: {e}", level="error")
                         slog.file_event(event="delete_failed", path=str(output_path), error=str(e))
-
-            # Logik für fehlgeschlagenen Upload beibehalten (kein Löschen)
-            if not upload_ok:
-                # Do not fail the whole job on upload issues; just log
+            else:
                 if slog:
                     slog.console("warning", "sftp", ":post", "Warn", "Upload failed; report remains local.", level="warning")
         else:
             if slog:
                 slog.console("info", "sftp", ":post", "Skip", "SFTP disabled in config.")
+
 
 if __name__ == "__main__":
     try:
