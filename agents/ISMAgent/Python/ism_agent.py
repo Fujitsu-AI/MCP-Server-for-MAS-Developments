@@ -110,8 +110,8 @@ class StructuredLog:
         if level:
             lvl = level.upper()
             if lvl in self.LEVEL_ICONS:
-                return self.LEVEL_ICONS[lvl] + " |"
-        return "ℹ️ |"
+                return self.LEVEL_ICONS[lvl] #+ " |"
+        return "ℹ️ "
 
     # >>> FIXED HERE <<< (kein level mehr!)
     def _line(self, icon: str, component: str, action: str, direction: str, message: str) -> str:
@@ -538,6 +538,8 @@ def generate_logical_sentence(
                     "usePublic": use_public,
                     "groups": groups,
                     "language": language_code or config.get("language", "en"),
+                    "json_data": parameters,
+                    "node": parameters,  # falls der Server 'node' statt 'json_data' erwartet
                 },
             }
 
