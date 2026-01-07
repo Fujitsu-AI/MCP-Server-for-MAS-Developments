@@ -64,7 +64,7 @@ function decrypt(data) {
 /* --- 2. THE SERVER CLASS --- */
 class FujitsuFinalServer {
     constructor() {
-        this.server = new Server({ name: 'pgpt-v14-final', version: '14.0.0' }, { capabilities: { tools: {} } });
+        this.server = new Server({ name: 'pgpt-v15-final', version: '15.0.0' }, { capabilities: { tools: {} } });
         this.app = express();
         
         // Stores the last SSE connection for Auto-Fix during tunnel disconnections
@@ -77,8 +77,6 @@ class FujitsuFinalServer {
             next();
         });
 
-        // IMPORTANT: DO NOT use express.json(), as it interferes with the SSE stream!
-        
         this.transports = new Map();
         this.setupAxios();
         this.setupHandlers();
@@ -105,7 +103,6 @@ class FujitsuFinalServer {
     isFn(n) {
         const key = `ENABLE_${n.toUpperCase()}`;
         const val = config.Functions?.[key];
-        // If not defined in config, allow by default (to ensure nothing is missing)
         return val === undefined ? true : val === true;
     }
 
@@ -129,7 +126,7 @@ class FujitsuFinalServer {
             add('delete_all_chats', 'Delete ALL Chats', { type: 'object', properties: { token: { type: 'string' } }, required: ['token'] });
 
             // 3. Sources (RAG)
-            const srcP = { token: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' }, groups: { type: 'array', items: { type: 'string' } } };
+            const srcP = { token: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' }, groups: { type: 'array', items: { type: 'string' }, description: 'Required in v1.5. Use [] for public.' } };
             add('create_source', 'Upload/Create Source', { type: 'object', properties: srcP, required: ['token', 'name', 'content', 'groups'] });
             add('edit_source', 'Edit Source', { type: 'object', properties: { ...srcP, sourceId: { type: 'string' } }, required: ['token', 'sourceId'] });
             add('get_source', 'Get Source Details', { type: 'object', properties: { token: { type: 'string' }, sourceId: { type: 'string' } }, required: ['token', 'sourceId'] });
@@ -142,17 +139,59 @@ class FujitsuFinalServer {
             add('delete_group', 'Delete a Group', { type: 'object', properties: { token: { type: 'string' }, groupName: { type: 'string' } }, required: ['token', 'groupName'] });
 
             // 5. Users
-            const usrP = { token: { type: 'string' }, email: { type: 'string' }, name: { type: 'string' }, password: { type: 'string' }, activateFtp: { type: 'boolean' } };
+            const usrP = { token: { type: 'string' }, email: { type: 'string' }, name: { type: 'string' }, password: { type: 'string' }, activateFtp: { type: 'boolean' }, ftpPassword: { type: 'string' } };
             add('store_user', 'Create User', { type: 'object', properties: usrP, required: ['token', 'email', 'name', 'password'] });
             add('edit_user', 'Edit User', { type: 'object', properties: { ...usrP, password: { type: 'string' } }, required: ['token', 'email'] });
             add('delete_user', 'Delete User', { type: 'object', properties: { token: { type: 'string' }, email: { type: 'string' } }, required: ['token', 'email'] });
             add('reactivate_user', 'Reactivate User', { type: 'object', properties: { token: { type: 'string' }, email: { type: 'string' } }, required: ['token', 'email'] });
 
-            // 6. Scenarios
-            const sceP = { token: { type: 'string' }, name: { type: 'string' }, description: { type: 'string' }, creativity: { type: 'integer' }, k: { type: 'integer' }, context_retriever_type: { type: 'string', enum: ['vector_store', 'document_store', 'none'] }, use_history: { type: 'boolean' } };
+            // 6. Scenarios (EXACT v1.5 API Definition) [cite: 552, 692, 694]
+            const sceP = {
+                token: { type: 'string' },
+                // Strings
+                name: { type: 'string', minLength: 3, maxLength: 40, description: "Unique name (3-40 chars)" },
+                description: { type: 'string', minLength: 3, maxLength: 128, description: "Description (3-128 chars)" },
+                icon: { type: 'string', description: "Icon identifier", default: "ph-shapes" },
+                
+                // Prompts (Explicitly added as per user request and PDF pg. 34)
+                system_pre_prompt: { type: 'string', description: "System-level prompt prefix", default: "" },
+                user_pre_prompt: { type: 'string', description: "User prompt prefix", default: "" },
+                user_post_prompt: { type: 'string', description: "User prompt suffix", default: "" },
+
+                // Settings
+                active: { type: 'boolean', default: false },
+                creativity: { type: 'integer', minimum: 1, maximum: 4, default: 1, description: "1=Concise, 4=Elaborate" },
+                k: { type: 'integer', minimum: 1, maximum: 20, default: 5, description: "Document chunks to retrieve" },
+                similarity_threshold: { type: 'number', minimum: 0.0, maximum: 0.9999, default: 0.0 },
+                
+                // Retrieval Strategy
+                context_retriever_type: { 
+                    type: 'string', 
+                    enum: ['vector_store', 'document_store', 'none'], 
+                    default: 'none',
+                    description: "Type of context retrieval" 
+                },
+                
+                // Booleans
+                use_sparse: { type: 'boolean', default: true, description: "Keyword-based search" },
+                use_dense: { type: 'boolean', default: true, description: "Semantic search" },
+                use_reranking: { type: 'boolean', default: true, description: "Result reranking" },
+                use_history: { 
+                    type: 'boolean', 
+                    default: false, 
+                    description: "STRICT: Only allowed if context_retriever_type is 'none' " 
+                }
+            };
+
             add('list_scenarios', 'List Scenarios', { type: 'object', properties: { token: { type: 'string' }, page: { type: 'integer' } }, required: ['token'] });
-            add('create_scenario', 'Create Scenario', { type: 'object', properties: sceP, required: ['token', 'name'] });
-            add('edit_scenario', 'Edit Scenario', { type: 'object', properties: { ...sceP, scenarioId: { type: 'string' }, active: { type: 'boolean' } }, required: ['token', 'scenarioId'] });
+            add('create_scenario', 'Create Scenario', { type: 'object', properties: sceP, required: ['token', 'name', 'description'] });
+            
+            // Edit Scenario needs scenarioId
+            const editSceP = { ...sceP };
+            editSceP.scenarioId = { type: 'string' };
+            // Remove name/description from REQUIRED in edit mode, as they are optional patches
+            add('edit_scenario', 'Edit Scenario', { type: 'object', properties: editSceP, required: ['token', 'scenarioId'] });
+            
             add('delete_scenario', 'Delete Scenario', { type: 'object', properties: { token: { type: 'string' }, scenarioId: { type: 'string' } }, required: ['token', 'scenarioId'] });
 
             return { tools };
@@ -172,13 +211,19 @@ class FujitsuFinalServer {
                     res = await this.api.post('/login', { email: args.email, password: pwd });
                 }
                 else if (name === 'create_scenario' || name === 'edit_scenario') {
-                    // Scenario Validation
+                    // Scenario Validation [cite: 682, 683]
+                    // use_history is ONLY allowed when context_retriever_type is 'none'
+                    
+                    // Note: If updating, we might need to know the existing state, but the API enforces this rule.
+                    // We perform a client-side check if both parameters are present in the request.
                     if (args.use_history === true && args.context_retriever_type && args.context_retriever_type !== 'none') {
-                        throw new Error("Validation Error: 'use_history' requires context_retriever_type 'none'");
+                        throw new Error("STRICT VALIDATION: 'use_history': true is ONLY allowed when 'context_retriever_type' is 'none'.");
                     }
+                    
                     const method = name.startsWith('edit') ? 'patch' : 'post';
                     const url = name.startsWith('edit') ? `/scenarios/${args.scenarioId}` : '/scenarios';
                     if(pl.scenarioId) delete pl.scenarioId;
+                    
                     res = await this.api[method](url, pl, { headers: auth });
                 }
                 // --- MAPPING LOGIC FOR ALL OTHER TOOLS ---
@@ -207,7 +252,7 @@ class FujitsuFinalServer {
                         'edit_user': { m: 'patch', u: '/users' },
                         'delete_user': { m: 'delete', u: '/users', d: { email: args.email } },
                         'reactivate_user': { m: 'post', u: '/users/reactivate', d: { email: args.email } },
-                        // Scenarios
+                        // Scenarios (List/Delete)
                         'list_scenarios': { m: 'get', u: '/scenarios', p: { page: args.page } },
                         'delete_scenario': { m: 'delete', u: `/scenarios/${args.scenarioId}` }
                     };
@@ -231,7 +276,7 @@ class FujitsuFinalServer {
                 
                 return { content: [{ type: 'text', text: JSON.stringify(res.data.data || res.data, null, 2) }] };
             } catch (e) {
-                const apiMsg = e.response?.data?.message || e.message;
+                const apiMsg = e.response?.data?.message || JSON.stringify(e.response?.data) || e.message;
                 return { content: [{ type: 'text', text: `API Error: ${apiMsg}` }], isError: true };
             }
         });
@@ -307,7 +352,7 @@ class FujitsuFinalServer {
         const USE_TLS = getCfg('Server_Config.ENABLE_TLS') === 'true';
 
         const startMsg = () => {
-            console.log(chalk.bgGreen.black(` SERVER v14.0 STARTING `));
+            console.log(chalk.bgGreen.black(` SERVER v15.0 FULL STARTING `));
             console.log(chalk.white(`Mode: ${USE_TLS ? 'HTTPS' : 'HTTP'}`));
             console.log(chalk.white(`Port: ${PORT}`));
             console.log(chalk.white(`PID:  ${process.pid}`));
