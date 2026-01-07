@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Script to set up and build the MCP Server for MAS Developments (Fsas Technologies AI Team)
+# --- Fsas Technologies AI Team - MCP Installation Script (v1.5) ---
 
 error_exit() {
   echo "❌ $1" >&2
@@ -19,46 +19,44 @@ prompt_yes_no() {
   done
 }
 
+# 1. ROOT-CHECK & USER-SWITCH
 if [[ $EUID -eq 0 ]]; then
   echo "⚠️ Warning: You are running the installation script as the Root user."
-  echo "Installing as Root can lead to permission issues and potential security risks."
-
-  if prompt_yes_no "Do you want to create a new user 'mcpuser' and continue the installation as this user?"; then
-    if id "mcpuser" &>/dev/null; then
-      echo "✔️ User 'mcpuser' already exists."
-    else
+  
+  if prompt_yes_no "Do you want to create/use user 'mcpuser' and continue as this user?"; then
+    if ! id "mcpuser" &>/dev/null; then
       echo "Creating user 'mcpuser'..."
-      useradd -m -s /bin/bash mcpuser || error_exit "Failed to create user 'mcpuser'."
-      echo "✔️ User 'mcpuser' has been created."
+      useradd -m -s /bin/bash mcpuser || error_exit "Failed to create user."
     fi
 
     CURRENT_DIR=$(pwd)
     SCRIPT_NAME=$(basename "$0")
-    PROJECT_NAME=$(basename "$CURRENT_DIR")
-    NEW_PROJECT_PATH="/home/mcpuser/$PROJECT_NAME"
+    PROJECT_DIR_NAME=$(basename "$CURRENT_DIR")
+    NEW_PROJECT_PATH="/home/mcpuser/$PROJECT_DIR_NAME"
 
-    if [[ "$CURRENT_DIR" != "$NEW_PROJECT_PATH" ]]; then
-      echo "📁 Moving directory to '$NEW_PROJECT_PATH'..."
-      mkdir -p "/home/mcpuser"
-      cp -r "$CURRENT_DIR" "/home/mcpuser/"
-      chown -R mcpuser:mcpuser "$NEW_PROJECT_PATH"
-      echo "✔️ Directory moved and ownership changed."
-    fi
-
+    echo "📁 Preparing directory '$NEW_PROJECT_PATH'..."
+    mkdir -p "$NEW_PROJECT_PATH"
+    # Kopiere den INHALT des aktuellen Ordners in das neue Ziel
+    cp -a "$CURRENT_DIR/." "$NEW_PROJECT_PATH/"
+    chown -R mcpuser:mcpuser "/home/mcpuser"
+    
     echo "🔄 Switching to user 'mcpuser' to continue installation..."
-    # FIX: Hier wird nun der korrekte Dateiname verwendet
-    sudo -u mcpuser -H bash "$NEW_PROJECT_PATH/$SCRIPT_NAME" || error_exit "Installation as 'mcpuser' failed."
+    # Wechselt explizit in das neue Home-Verzeichnis und startet dort das Skript
+    sudo -u mcpuser -H bash -c "cd $NEW_PROJECT_PATH && bash ./$SCRIPT_NAME" || error_exit "Installation as 'mcpuser' failed."
     exit 0
   else
     error_exit "Installation as Root aborted."
   fi
 fi
 
-echo "🔍 Checking Node.js Version..."
+# 2. INSTALLATION (LÄUFT ALS MCPUSER)
+echo "🔍 Checking Environment..."
 node -v || error_exit "Node.js is not installed."
+[ -f "package.json" ] || error_exit "package.json not found in $(pwd)!"
 
 echo "📦 Installing project dependencies..."
-rm -rf node_modules package-lock.json
+rm -f package-lock.json
+rm -rf node_modules
 npm install || error_exit "npm install failed."
 
 echo "🛠️ Building the project..."
@@ -77,3 +75,4 @@ if prompt_yes_no "Do you want to create SSL certificates now?"; then
 fi
 
 echo "✅ Setup and build complete!"
+echo "🚀 Start with: node dist/index.js"
