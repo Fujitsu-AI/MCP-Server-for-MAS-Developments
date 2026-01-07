@@ -33,7 +33,7 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 2.  **Install dependencies:**
     ```bash
     chmod +x Install-MPC-SSE.sh
-    ./Install-MPC-SSE.sh
+    sudo ./Install-MPC-SSE.sh
     ```
 
 3.  **Prepare Configuration:**
@@ -93,18 +93,20 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 
 ## 🏃‍♂️ Operation
 
-### 1. Start the Server
-On the remote machine (e.g., your server .88), execute the following command:
+### 1. Establish SSH Tunnel
+On your local desktop, bridge the connection to the remote server to access port 5000:
+```bash
+ssh -L 5000:localhost:5000 mcpuser@<server-ip>
+```
+
+### 2. Start the Server
+On the remote machine (your server), execute the following command:
 ```bash
 node src/index.js
 ```
 The console will display: `SERVER v14.0 (COMPLETE) RUNNING on Port 5000`.
 
-### 2. Establish SSH Tunnel
-On your local desktop, bridge the connection to the remote server to access port 5000:
-```bash
-ssh -L 5000:localhost:5000 mcpuser@<server-ip>
-```
+
 
 
 

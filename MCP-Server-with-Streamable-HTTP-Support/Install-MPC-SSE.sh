@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# --- Fsas Technologies AI Team - MCP Installation Script (v1.5) ---
+# --- Fsas Technologies AI Team - Robust Installation Script (v1.5) ---
 
 error_exit() {
   echo "❌ $1" >&2
@@ -21,58 +21,66 @@ prompt_yes_no() {
 
 # 1. ROOT-CHECK & USER-SWITCH
 if [[ $EUID -eq 0 ]]; then
-  echo "⚠️ Warning: You are running the installation script as the Root user."
-  
-  if prompt_yes_no "Do you want to create/use user 'mcpuser' and continue as this user?"; then
-    if ! id "mcpuser" &>/dev/null; then
-      echo "Creating user 'mcpuser'..."
-      useradd -m -s /bin/bash mcpuser || error_exit "Failed to create user."
-    fi
-
-    CURRENT_DIR=$(pwd)
-    SCRIPT_NAME=$(basename "$0")
-    PROJECT_DIR_NAME=$(basename "$CURRENT_DIR")
-    NEW_PROJECT_PATH="/home/mcpuser/$PROJECT_DIR_NAME"
-
-    echo "📁 Preparing directory '$NEW_PROJECT_PATH'..."
-    mkdir -p "$NEW_PROJECT_PATH"
-    # Kopiere den INHALT des aktuellen Ordners in das neue Ziel
-    cp -a "$CURRENT_DIR/." "$NEW_PROJECT_PATH/"
-    chown -R mcpuser:mcpuser "/home/mcpuser"
-    
-    echo "🔄 Switching to user 'mcpuser' to continue installation..."
-    # Wechselt explizit in das neue Home-Verzeichnis und startet dort das Skript
-    sudo -u mcpuser -H bash -c "cd $NEW_PROJECT_PATH && bash ./$SCRIPT_NAME" || error_exit "Installation as 'mcpuser' failed."
-    exit 0
-  else
-    error_exit "Installation as Root aborted."
+  echo "⚠️ Warning: Running as Root. Switching to mcpuser..."
+  if ! id "mcpuser" &>/dev/null; then
+      useradd -m -s /bin/bash mcpuser
   fi
+
+  CURRENT_DIR=$(pwd)
+  SCRIPT_NAME=$(basename "$0")
+  PROJECT_DIR_NAME=$(basename "$CURRENT_DIR")
+  NEW_PROJECT_PATH="/home/mcpuser/$PROJECT_DIR_NAME"
+
+  mkdir -p "$NEW_PROJECT_PATH"
+  cp -a "$CURRENT_DIR/." "$NEW_PROJECT_PATH/"
+  chown -R mcpuser:mcpuser "/home/mcpuser"
+  
+  sudo -u mcpuser -H bash -c "cd $NEW_PROJECT_PATH && bash ./$SCRIPT_NAME" || error_exit "Installation failed."
+  exit 0
 fi
 
 # 2. INSTALLATION (LÄUFT ALS MCPUSER)
 echo "🔍 Checking Environment..."
-node -v || error_exit "Node.js is not installed."
-[ -f "package.json" ] || error_exit "package.json not found in $(pwd)!"
+node -v
+[ -f "package.json" ] || error_exit "package.json missing!"
 
-echo "📦 Installing project dependencies..."
+echo "📦 Installing dependencies..."
 rm -f package-lock.json
 rm -rf node_modules
 npm install || error_exit "npm install failed."
 
-echo "🛠️ Building the project..."
-npm run build || error_exit "Build failed."
+# --- NEU: SECURITY AUDIT ---
+echo "🛡️ Checking for security vulnerabilities..."
+
+npm audit fix || echo "⚠️ Some vulnerabilities could not be fixed automatically. Please check 'npm audit' manually."
+
+# 3. BUILD / PREPARE PROJECT
+echo "🛠️ Building / Preparing Project..."
+mkdir -p dist
+
+if [ -f "tsconfig.json" ] && [ -d "src" ] && ls src/*.ts >/dev/null 2>&1; then
+    echo "Found TypeScript files and config. Running tsc..."
+    npm run build || error_exit "TypeScript build failed."
+else
+    echo "No TypeScript project detected. Copying JavaScript directly..."
+    if [ -f "src/index.js" ]; then
+        cp src/*.js dist/
+        chmod 755 dist/index.js
+        echo "✔️ JavaScript modules copied to dist/"
+    else
+        error_exit "Source files (src/index.js) not found!"
+    fi
+fi
 
 if [ -d "src/public" ]; then
     echo "🔧 Installing assets..."
-    mkdir -p dist
     cp -r src/public/* dist/ 2>/dev/null || true
 fi
 
-if prompt_yes_no "Do you want to create SSL certificates now?"; then
+if prompt_yes_no "Create SSL certificates?"; then
   mkdir -p ~/.ssh/certs
   openssl req -x509 -newkey rsa:2048 -nodes -keyout ~/.ssh/certs/server.key -out ~/.ssh/certs/server.crt -days 365 -subj "/CN=localhost"
-  echo "✔️ SSL certificates created successfully."
 fi
 
-echo "✅ Setup and build complete!"
-echo "🚀 Start with: node dist/index.js"
+echo "---"
+echo "✅ Setup complete! Start with: node dist/index.js"
