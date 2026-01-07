@@ -1,3 +1,0 @@
-name;email;language;password;usePublic;groups;roles;activateFtp;ftpPassword
-_api_test_5;_api_test_5@pgpt.local;de;PrePost__2025;True;["A"];["system", "documents"];True;myFTP-Password1337
-_api_test_6;_api_test_6@pgpt.local;de;PrePost__2025!;True;[""];["system", "documents"];True;myFTP-Password1337

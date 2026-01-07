@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Log Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+        img {
+            max-width: 150px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            margin-top: 0;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            overflow: auto;
+            max-height: 80vh;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <!-- Logo -->
+    <img src="pgpt-mcp-logo.png" alt="pGPT-MCP Logo">
+
+    <!-- Titel -->
+    <h1>Private GPT MCP-Server Live Log Viewer</h1>
+
+    <!-- Log-Inhalt -->
+    <pre id="logContent">Warten auf Logdaten...</pre>
+
+    <!-- WebSocket-Integration -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const logContent = document.getElementById('logContent');
+
+        socket.on('logUpdate', (data) => {
+            logContent.textContent = data;
+        });
+    </script>
+</body>
+</html>
