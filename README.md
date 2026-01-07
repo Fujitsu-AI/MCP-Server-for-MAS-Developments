@@ -50,8 +50,8 @@ All servers in this suite are based on the same hardened logic engine developed 
 
 ```text
 .
-├── API-Server-with-TCP-Support           # Legacy & Custom TCP Gateway
-├── MCP-Server-with-STDIO-Support         # Local Agent Integration (Standard)
+├── API-Server-with-TCP-Support             # Legacy & Custom TCP Gateway
+├── MCP-Server-with-STDIO-Support           # Local Agent Integration (Standard)
 └── MCP-Server-with-Streamable-HTTP-Support # Remote & Web Gateway (SSE)
 ```
 
@@ -62,13 +62,17 @@ All servers in this suite are based on the same hardened logic engine developed 
 1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
-    cd mcp-server-suite
+    cd MCP-Server-for-MAS-Developments
     ```
+2. **Select the desired server**
+* **API-Server-with-TCP-Support:** Best for Legacy applications & Custom TCP Gateway
+* **MCP-Server-with-STDIO-Support:** Local Agent Integration (Standard)
+* **MCP-Server-with-Streamable-HTTP-Support:** Remote & Web Gateway (SSE)
 
-2.  **Prepare Configuration:**
+3.  **Prepare Configuration:**
     Create a `pgpt.env.json` in the respective server directory with your PGPT API credentials.
 
-3.  **Installation & Launch:**
+4.  **Installation & Launch:**
     Choose your server type and follow the local `INSTALL.md` or use the provided setup script, for example:
     ```bash
     ./Install-MPC-Server.sh
