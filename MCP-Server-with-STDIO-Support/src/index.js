@@ -18,9 +18,6 @@ import chalk from 'chalk';
 import figlet from 'figlet';
 import { fileURLToPath } from 'url';
 
-// Own modules
-import { messages } from './pgpt-messages.js';
-
 /* ################ 1. SETUP & PATH LOGIC ################ */
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,22 +32,30 @@ function expandPath(filePath) {
     return path.isAbsolute(cleanPath) ? cleanPath : path.resolve(__dirname, '..', cleanPath);
 }
 
-dotenv.config({ path: './pgpt.env' });
-const envFilePath = path.resolve(__dirname, '../pgpt.env.json');
-let config = JSON.parse(fs.readFileSync(envFilePath, 'utf-8'));
+// Config Load Strategy: Try local dir, then parent dir
+const envPathLocal = path.resolve(__dirname, 'pgpt.env.json');
+const envPathParent = path.resolve(__dirname, '../pgpt.env.json');
+const envFilePath = fs.existsSync(envPathLocal) ? envPathLocal : envPathParent;
+
+dotenv.config({ path: envFilePath.replace('.json', '') }); // Load .env if exists
+
+let config = {};
+try {
+    config = JSON.parse(fs.readFileSync(envFilePath, 'utf-8'));
+} catch (e) {
+    console.error(chalk.yellow(`[WARN] Config not found at ${envFilePath}. Using defaults/env vars.`));
+}
 
 const getCfg = (p, fallback = null) => p.split('.').reduce((acc, part) => acc && acc[part], config) ?? fallback;
 
 /* ################ 2. CRYPTOGRAPHY ################ */
 
 const privateKeyPath = expandPath(getCfg('Server_Config.PRIVATE_KEY'));
-const isPwEncEnabled = String(getCfg('Server_Config.PW_ENCRYPTION')) === 'true';
-
 let privateKey;
 try { 
-    privateKey = fs.readFileSync(privateKeyPath, 'utf8'); 
+    if (privateKeyPath) privateKey = fs.readFileSync(privateKeyPath, 'utf8'); 
 } catch (e) { 
-    console.error(chalk.yellow("Warning: SSH Key not loaded.")); 
+    console.error(chalk.yellow("Warning: SSH Key defined but not loaded.")); 
 }
 
 function decrypt(data) {
@@ -83,9 +88,11 @@ class FujitsuPGPTServer {
         let customHeader = null;
         if (useProxy && rawHeader) customHeader = String(getCfg('Proxy_Config.HEADER_ENCRYPTED')) === 'true' ? decrypt(rawHeader) : rawHeader;
 
+        const apiUrl = getCfg('PGPT_Url.API_URL') || 'http://localhost:8001';
+
         this.axiosInstance = axios.create({
-            baseURL: getCfg('PGPT_Url.API_URL'),
-            timeout: 120000, // Timeout according to v1.5
+            baseURL: apiUrl,
+            timeout: 120000, // Timeout increased to 120s for v1.5
             headers: { 
                 'Accept': 'application/json', 
                 'Content-Type': 'application/json', 
@@ -96,7 +103,8 @@ class FujitsuPGPTServer {
     }
 
     isAllowed(name) { 
-        return config.Functions && config.Functions[`ENABLE_${name.toUpperCase()}`] === true; 
+        const val = config.Functions && config.Functions[`ENABLE_${name.toUpperCase()}`];
+        return val === undefined ? true : val === true; // Default to true if missing
     }
 
     setupHandlers() {
@@ -117,7 +125,7 @@ class FujitsuPGPTServer {
             addTool('delete_all_chats', 'Flush all chats', { type: 'object', properties: { token: { type: 'string' } }, required: ['token'] });
 
             // SOURCES (v1.5: groups mandatory)
-            addTool('create_source', 'Add Markdown source', { type: 'object', properties: { token: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' }, groups: { type: 'array', items: { type: 'string' }, description: 'Use [] for public' } }, required: ['token', 'name', 'content', 'groups'] });
+            addTool('create_source', 'Add Markdown source', { type: 'object', properties: { token: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' }, groups: { type: 'array', items: { type: 'string' }, description: 'Required! Use [] for public' } }, required: ['token', 'name', 'content', 'groups'] });
             addTool('list_sources', 'List sources in group', { type: 'object', properties: { token: { type: 'string' }, groupName: { type: 'string', description: 'Empty string for public' } }, required: ['token', 'groupName'] });
             addTool('get_source', 'Get source info', { type: 'object', properties: { token: { type: 'string' }, sourceId: { type: 'string' } }, required: ['token', 'sourceId'] });
             addTool('edit_source', 'Update source (groups only updated if provided)', { type: 'object', properties: { token: { type: 'string' }, sourceId: { type: 'string' }, name: { type: 'string' }, content: { type: 'string' }, groups: { type: 'array', items: { type: 'string' } } }, required: ['token', 'sourceId'] });
@@ -154,6 +162,7 @@ class FujitsuPGPTServer {
             };
             addTool('list_scenarios', 'Get scenarios', { type: 'object', properties: { token: { type: 'string' }, page: { type: 'integer' } }, required: ['token'] });
             addTool('create_scenario', 'Create custom scenario', { type: 'object', properties: { token: { type: 'string' }, ...scenarioBase }, required: ['token', 'name', 'description'] });
+            // For editing, ID is required
             addTool('edit_scenario', 'Update scenario ', { type: 'object', properties: { token: { type: 'string' }, scenarioId: { type: 'string' }, ...scenarioBase }, required: ['token', 'scenarioId'] });
             addTool('delete_scenario', 'Delete custom scenario', { type: 'object', properties: { token: { type: 'string' }, scenarioId: { type: 'string' } }, required: ['token', 'scenarioId'] });
 
@@ -164,16 +173,25 @@ class FujitsuPGPTServer {
             const { name, arguments: args } = request.params;
             const auth = args.token ? { Authorization: `Bearer ${args.token}` } : {};
             const payload = { ...args }; delete payload.token;
+            const isPwEncEnabled = String(getCfg('Server_Config.PW_ENCRYPTION')) === 'true';
 
             try {
                 switch (name) {
                     case 'chat':
-                        const chatRes = await this.axiosInstance.post('/chats', { question: args.question, language: args.language, usePublic: args.usePublic ?? false, groups: args.groups || [] }, { headers: auth });
+                        // v1.5: groups must be array, default []
+                        const chatRes = await this.axiosInstance.post('/chats', { 
+                            question: args.question, 
+                            language: args.language, 
+                            usePublic: args.usePublic ?? false, 
+                            groups: args.groups || [] 
+                        }, { headers: auth });
                         return { content: [{ type: 'text', text: JSON.stringify(chatRes.data.data, null, 2) }] };
                     
                     case 'create_source':
                         const srcRes = await this.axiosInstance.post('/sources', payload, { headers: auth });
-                        return { content: [{ type: 'text', text: `DocID: ${srcRes.data.data.documentId}` }] };
+                        // Return ID for feedback
+                        const docId = srcRes.data?.data?.documentId || "OK";
+                        return { content: [{ type: 'text', text: `Source Created. ID: ${docId}` }] };
 
                     case 'list_sources':
                         const lSrcRes = await this.axiosInstance.post('/sources/groups', { groupName: args.groupName }, { headers: auth });
@@ -181,7 +199,7 @@ class FujitsuPGPTServer {
 
                     case 'edit_scenario':
                     case 'create_scenario':
-                        // Strict Validation according to v1.5 manual
+                        // Strict Validation v1.5
                         if (args.use_history === true && args.context_retriever_type && args.context_retriever_type !== 'none') {
                             throw new Error("STRICT VALIDATION: use_history: true is ONLY allowed when context_retriever_type is 'none'");
                         }
@@ -194,10 +212,11 @@ class FujitsuPGPTServer {
                     case 'login': {
                         const pwd = isPwEncEnabled ? decrypt(args.password) : args.password;
                         const loginRes = await this.axiosInstance.post('/login', { email: args.email, password: pwd });
-                        return { content: [{ type: 'text', text: `Token: ${loginRes.data.data.token}` }] };
+                        return { content: [{ type: 'text', text: `${loginRes.data.data.token}` }] };
                     }
 
                     default:
+                        // Generic Handler for CRUD operations
                         const map = {
                             'logout': { m: 'delete', u: '/logout' },
                             'continue_chat': { m: 'patch', u: `/chats/${args.chatId}`, d: { question: args.question } },
@@ -219,12 +238,21 @@ class FujitsuPGPTServer {
                         };
                         const c = map[name];
                         if (c) {
-                            const res = await this.axiosInstance[c.m](c.u, c.m === 'get' || c.m === 'delete' ? { params: c.p, data: c.d, headers: auth } : c.d, { headers: auth });
+                            // Correct Axios Signature for DELETE/GET vs POST/PATCH
+                            // DELETE/GET: url, config { data, params, headers }
+                            // POST/PATCH: url, data, config { headers }
+                            const isDataInConfig = c.m === 'get' || c.m === 'delete';
+                            const res = await this.axiosInstance[c.m](
+                                c.u, 
+                                isDataInConfig ? { params: c.p, data: c.d, headers: auth } : c.d, 
+                                isDataInConfig ? undefined : { headers: auth }
+                            );
                             return { content: [{ type: 'text', text: JSON.stringify(res.data, null, 2) }] };
                         }
                         throw new McpError(ErrorCode.MethodNotFound, `Tool ${name} unknown`);
                 }
             } catch (error) {
+                // Return clear error message to Client
                 const msg = error.response?.data ? JSON.stringify(error.response.data) : error.message;
                 return { content: [{ type: 'text', text: `API Error: ${msg}` }], isError: true };
             }
@@ -234,10 +262,15 @@ class FujitsuPGPTServer {
     async run() {
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
+        // Important: Use console.error for logs!
         console.error(chalk.green("Fujitsu PGPT v1.5 MCP Server FULLY active."));
     }
 }
 
 const server = new FujitsuPGPTServer();
 server.run().catch(e => console.error(chalk.red("Crash:"), e));
-figlet.text('PGPT API v1.5 Full', { font: 'Slant' }, (err, data) => { if (!err) console.error(chalk.blue(data)); });
+
+// Startup Banner (to stderr)
+figlet.text('PGPT API v1.5', { font: 'Slant' }, (err, data) => { 
+    if (!err) console.error(chalk.blue(data)); 
+});

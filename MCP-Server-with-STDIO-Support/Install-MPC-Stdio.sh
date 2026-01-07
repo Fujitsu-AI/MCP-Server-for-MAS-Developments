@@ -48,4 +48,4 @@ echo "📂 Finalizing distribution folders..."
 
 echo "---"
 echo "✅ Setup complete!"
-echo "🚀 Start your server: node dist/index.js"
+echo "🚀 To test your server: npx @modelcontextprotocol/inspector node dist/index.js"

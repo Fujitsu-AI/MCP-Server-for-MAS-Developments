@@ -127,9 +127,13 @@ To test the tools without Claude, use the MCP Inspector in "Command Mode":
 cd MCP-Server-with-STDIO-Support
 
 # Launch Inspector
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @modelcontextprotocol/inspector@latest node dist/index.js
 ```
-* The Inspector UI will open in your browser (usually `http://localhost:3000`).
+* The Inspector UI will open in your browser (usually ` http://localhost:6274/?MCP_PROXY_AUTH_TOKEN=...`).
+* Transport Type: `STDIO`
+* Command: `node`
+* Arguments: `dist/index.js`
+
 * You can now execute tools directly.
 
 ---
