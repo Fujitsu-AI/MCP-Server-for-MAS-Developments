@@ -60,7 +60,7 @@ All servers in this suite are based on the same hardened logic engine developed 
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/fsas-tech/mcp-server-suite.git
+    git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
     cd mcp-server-suite
     ```
 
@@ -68,7 +68,7 @@ All servers in this suite are based on the same hardened logic engine developed 
     Create a `pgpt.env.json` in the respective server directory with your PGPT API credentials.
 
 3.  **Installation & Launch:**
-    Choose your server type and follow the local `INSTALL.md` or use the provided setup script:
+    Choose your server type and follow the local `INSTALL.md` or use the provided setup script, for example:
     ```bash
     ./Install-MPC-Server.sh
     ```
