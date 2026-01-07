@@ -22,9 +22,9 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 
 ---
 
-## 📦 Installation
+## 📦 Server Installation
 
-1.  **Clone the repository:**
+1.  **Log in to your server as a user with sudo privileges and clone the repository:**
     ```bash
     git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
     cd MCP-Server-for-MAS-Developments/MCP-Server-with-Streamable-HTTP-Support
