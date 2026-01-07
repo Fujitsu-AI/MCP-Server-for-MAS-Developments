@@ -93,27 +93,27 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 
 ## 🏃‍♂️ Operation
 
-### 1. Establish SSH Tunnel
-On your local desktop, bridge the connection to the remote server to access port 5000:
-```bash
-ssh -L 5000:localhost:5000 mcpuser@<server-ip>
-```
-
-### 2. Start the Server
+### 1. Start the Server
 On the remote machine (your server), execute the following command:
 ```bash
 node src/index.js
 ```
 The console will display: `SERVER v14.0 (COMPLETE) RUNNING on Port 5000`.
 
+### 2. Check the connection
+Open your browser and use the url: `http://<your server ip>:5000/health`
+The server must respond with a version message, e.g. `V14 ONLINE`. If not, check the network, firewall settings etc.
 
+### 3. Start the MCP Inspector on your local PC for testing
+```bash
+npx @modelcontextprotocol/inspector
+```
 
-
-
-### 3. Connect via MCP Inspector
-Open the MCP Inspector on your local browser and use these settings:
-* **Transport Type:** `Streamable HTTP`
-* **URL:** `http://127.0.0.1:5000/sse`
+### 4. Connect via MCP Inspector
+Open the MCP Inspector on your local browser and use these settings, please select `SSE` as the `Streamable HTTP` entry is misleading!
+* **Transport Type:** `SSE`
+* **URL:** `http://<your server ip>:5000/sse`
+* **Connection** `Direct`
 
 ---
 
