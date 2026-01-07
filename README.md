@@ -1,6 +1,7 @@
 ![privateGPT MCP Server](images/privateGPT-MCP.png)
 
-# Fsas Technologies AI Team: Multi-Transport Server Suite (v1.5)
+# Fsas Technologies AI Team: 
+# Multi-Transport Server Suite (v1.5)
 
 Welcome to the server suite of the **Fsas Technologies AI Team**. This repository provides a highly specialized selection of gateway servers optimized to integrate the **PGPT API** into any IT environment—ranging from established legacy systems to cutting-edge AI agent architectures.
 

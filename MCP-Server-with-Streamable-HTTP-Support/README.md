@@ -1,4 +1,4 @@
-# Fujitsu MCP Server for MAS Developments (v14.0)
+# Fujitsu MCP Server for MAS Developments
 
 This server implements the **Model Context Protocol (MCP)** using the **SSE (Server-Sent Events)** transport layer. It serves as a specialized gateway between MCP-compliant clients (like the MCP Inspector or Claude Desktop) and the **Fujitsu PrivateGPT API**.
 
@@ -26,55 +26,40 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 
 1.  **Clone the repository:**
     ```bash
-    git clone <your-repository-url>
-    cd MCP-Server-for-MAS-Developments
+    git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
+    cd MCP-Server-with-Streamable-HTTP-Support
     ```
 
 2.  **Install dependencies:**
     ```bash
-    npm install
+    chmod +x Install-MPC-SSE.sh
+    ./Install-MPC-SSE.sh
     ```
 
 3.  **Prepare Configuration:**
-    Create a `pgpt.env.json` in the root folder using the template below.
+    Create a `pgpt.env.json` in the root folder using the template below or rename the existing `pgpt.env.json.example`.
 
 ---
 
 ## ⚙️ Configuration (`pgpt.env.json`)
-
-The server is optimized for **Port 5000**. Below is the complete anonymized configuration:
-
 ```json
 {
     "PGPT_Url": {
-        "PRIVATE_GPT_API_URL": "https://<your-subdomain>.ai-testdrive.com/api/v1",
         "API_URL": "https://<your-subdomain>.ai-testdrive.com/api/v1"
     },
     "Proxy_Config": {
         "USE_PROXY": "true",
         "HEADER_ENCRYPTED": "false",
-        "ACCESS_HEADER": "<your-access-header>"
+        "ACCESS_HEADER": "<your-anonymized-access-header>"
     },
     "Server_Config": {
         "PORT": 5000,
-        "LANGUAGE": "en",
         "SSL_VALIDATE": "false",
         "PW_ENCRYPTION": "false",
-        "ALLOW_KEYGEN": "false",
-        "PUBLIC_KEY": "~/.ssh/id_rsa_public.pem",
         "PRIVATE_KEY": "~/.ssh/id_rsa",
         "ENABLE_TLS": "false",
         "SSL_KEY_PATH": "~/.ssh/certs/server.key",
         "SSL_CERT_PATH": "~/.ssh/certs/server.crt"
-    },
-    "Restrictions": {
-        "RESTRICTED_GROUPS": true,
-        "ENABLE_OPEN_AI_COMP_API": true
-    },
-    "Logging": {
-        "WRITTEN_LOGFILE": false,
-        "LOG_IPs": false,
-        "ANONYMOUS_MODE": false
     },
     "Functions": {
         "ENABLE_LOGIN": true,
