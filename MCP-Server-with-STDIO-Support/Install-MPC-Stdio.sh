@@ -48,4 +48,5 @@ echo "📂 Finalizing distribution folders..."
 
 echo "---"
 echo "✅ Setup complete!"
-echo "🚀 To test your server: npx @modelcontextprotocol/inspector node dist/index.js"
+echo "🚀 To test your server we recommend to run the latest version of MCP Inspector: npx --yes @modelcontextprotocol/inspector@latest node dist/index.js"
+

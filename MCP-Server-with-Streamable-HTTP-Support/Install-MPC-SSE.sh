@@ -84,3 +84,4 @@ fi
 
 echo "---"
 echo "✅ Setup complete! Start with: node dist/index.js"
+echo "🚀 To test your server we recommend to run the latest version of MCP Inspector on your local PC (NOT on the server if you have a Client/Server SetUp!): npx --yes @modelcontextprotocol/inspector@latest"
