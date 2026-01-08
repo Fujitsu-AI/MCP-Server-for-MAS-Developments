@@ -1,7 +1,6 @@
 ![privateGPT MCP Server](images/privateGPT-MCP.png)
 
-# Fsas Technologies AI Team: 
-# Multi-Transport Server Suite (v1.5)
+# Fsas Technologies AI Team: MCP and TCP Multi-Transport Server and Agents Suite (v1.5)
 
 Welcome to the server suite of the **Fsas Technologies AI Team**. This repository provides a highly specialized selection of gateway servers optimized to integrate the **PGPT API** into any IT environment—ranging from established legacy systems to cutting-edge AI agent architectures.
 
@@ -117,7 +116,7 @@ Enabling TLS between client and server is essential to ensure data privacy, secu
 Passwords can be encrypted using RSA (Rivest–Shamir–Adleman) public-key cryptography. This ensures that sensitive data, such as user passwords, are never transmitted in plaintext.
 
 ### Method
-- **Public key encryption** with a **2048-bit key length**.
+- **Public key encryption** with a **up to 4096-bit key length**.
 - **Padding**: `RSA_PKCS1_PADDING` to enhance security and prevent known padding attacks.
 
 ### Process
@@ -172,16 +171,6 @@ Tokens are used to authenticate requests and ensure only authorized users can ac
 - Tokens are generated upon successful login.
 - They are short-lived and automatically expire after a predefined time.
 - Tokens are signed using HMAC or RSA, making them tamper-proof.
-
-## 6. Restriction of Key Generation (Keygen)
-To prevent misuse of the system, key generation (`keygen`) is restricted:
-
-### Configuration
-- The server has a configuration option (`ALLOW_KEYGEN`) to enable or disable key generation.
-- Attempts to call the keygen function when disabled result in an error message.
-
-### Audit Logging
-- All keygen operations are logged for auditing and monitoring purposes.
 
 ## 📄 License & Copyright
 © 2026 **Fsas Technologies AI Team**. All rights reserved.
