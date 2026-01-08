@@ -65,7 +65,7 @@ All servers in this suite are based on the same hardened logic engine developed 
     cd MCP-Server-for-MAS-Developments
     ```
 2. **Select the desired server**
-* **API-Server-with-TCP-Support:** Best for Legacy applications & Custom TCP Gateway
+* **API-Server-with-TCP-Support:** Best for Legacy application integrations & Custom TCP Gateway solutions
 * **MCP-Server-with-STDIO-Support:** Local Agent Integration (Standard)
 * **MCP-Server-with-Streamable-HTTP-Support:** Remote & Web Gateway (SSE)
 
