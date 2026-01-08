@@ -80,6 +80,109 @@ All servers in this suite are based on the same hardened logic engine developed 
 
 ---
 
+# Security
+The following security features are implemented to ensure data protection and secure communication between the client application and server. These features cover encryption, decryption, key management, and transport security.
+
+---
+
+## 1. Transport Layer Security (TLS)
+- To secure communication between the client and server, TLS can be activate. All data transmitted between the client and server is encrypted using TLS (minimum version 1.2).
+
+## Why Should TLS Be Enabled Between Client and Server?
+
+### a. **Encryption of Communication**
+- TLS (Transport Layer Security) ensures that all data transmitted between the client and server is encrypted. This protects sensitive information such as passwords, credit card details, and personal data from eavesdropping attacks (Man-in-the-Middle attacks).
+
+### b. **Data Integrity**
+- TLS guarantees that the transmitted data remains unchanged and unaltered. The integrity check ensures that the received data is exactly as it was sent.
+
+### c. **Authentication**
+- TLS enables secure authentication of the server (and optionally the client) through digital certificates. This prevents users from falling victim to phishing attacks on fake websites.
+
+### d. **Protection Against Man-in-the-Middle Attacks**
+- TLS encrypts the connection, making it nearly impossible for attackers to intercept or manipulate traffic. Without TLS, attackers could capture and modify data packets.
+
+### e. **Compliance with Security Standards and Regulations**
+- Many regulatory requirements (e.g., GDPR, PCI-DSS) mandate secure data transmission. TLS is a fundamental component of these security requirements.
+
+### f. **Prevention of Downgrade and Replay Attacks**
+- TLS protects against attacks that attempt to downgrade a connection to an insecure version (downgrade attacks) or replay previously valid requests (replay attacks).
+
+## Conclusion
+Enabling TLS between client and server is essential to ensure data privacy, security, and communication integrity. It not only protects sensitive information but also helps meet compliance requirements and increases user trust.
+
+---
+
+## 2. Password Encryption
+Passwords can be encrypted using RSA (Rivest–Shamir–Adleman) public-key cryptography. This ensures that sensitive data, such as user passwords, are never transmitted in plaintext.
+
+### Method
+- **Public key encryption** with a **2048-bit key length**.
+- **Padding**: `RSA_PKCS1_PADDING` to enhance security and prevent known padding attacks.
+
+### Process
+1. The server administrator encrypts the client's password using the server's public key (`id_rsa_public.pem`) by executing `node security/generate_encrypted_password.js ~/.ssh/id_rsa_public.pem` and hand out the encrpyted password to the client.
+2. Alternatively: The client encrypts the password using the server's public key (`id_rsa_public.pem`) by using the `keygen` - Function. Therefore the function has to be enabled in the server's config (`privateGPT.env.json`). Important: Using this function also means transmitting data via the network. Therefore, make sure that the data traffic is secure and cannot be intercepted.
+3. Finally, the encrypted password is sent to the server, where it is decrypted using the server's private key.
+
+### Advantages
+- **Asymmetric encryption** ensures that only the server can decrypt the password.
+- Even if the communication channel is compromised, encrypted data remains secure.
+
+## 3. Key Management
+To secure data communication and encryption processes, the following key management principles are followed:
+
+### Public Key
+- Stored securely on the server (`id_rsa.pub`).
+- Used only for encryption and does not pose a security risk if exposed.
+
+### PEM Key
+- Stored securely on the server (`id_rsa_public.pem`).
+- Has to be created by using the public cert (see: [Server Configuration](#server-configuration))
+
+### Private Key
+- Stored securely on the server (`id_rsa`).
+- Restricted access with appropriate file permissions (`chmod 600`).
+- Used exclusively for decryption operations.
+
+### Key Rotation
+- Keys can be rotated periodically or upon detection of a security incident. Important: if these are reissued, the clients or AI agents immediately lose access to the MCP server and require a new RSA key (encrypted password)!
+- Old keys are securely invalidated.
+
+## 4. Decryption on the Server
+Decryption is exclusively performed on the server using the private key:
+
+### Process
+1. The server receives the encrypted password from the client.
+2. The private key decrypts the password to retrieve the original plaintext.
+3. The decrypted password is used internally (e.g., authentication) and never stored in plaintext.
+
+### Secure Handling
+- Decrypted passwords exist in memory only for the duration of processing.
+- Secure memory management practices ensure sensitive data is cleared immediately after use.
+
+### Certificate Validation
+- Certificates are validated on both sides to ensure the authenticity of the server and client.
+- Optionally, mutual TLS can be enabled for enhanced security.
+
+## 5. Authorization Tokens
+Tokens are used to authenticate requests and ensure only authorized users can access the system:
+
+### Token Management
+- Tokens are generated upon successful login.
+- They are short-lived and automatically expire after a predefined time.
+- Tokens are signed using HMAC or RSA, making them tamper-proof.
+
+## 6. Restriction of Key Generation (Keygen)
+To prevent misuse of the system, key generation (`keygen`) is restricted:
+
+### Configuration
+- The server has a configuration option (`ALLOW_KEYGEN`) to enable or disable key generation.
+- Attempts to call the keygen function when disabled result in an error message.
+
+### Audit Logging
+- All keygen operations are logged for auditing and monitoring purposes.
+
 ## 📄 License & Copyright
 © 2026 **Fsas Technologies AI Team**. All rights reserved.
 This suite is optimized for deployment in professional enterprise AI environments.
