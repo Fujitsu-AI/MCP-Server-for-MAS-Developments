@@ -22,11 +22,13 @@ This server implements the **Model Context Protocol (MCP)** using the **STDIO (S
 
 ---
 
-## 📦 Installation
+## 📦 Installation (Linux or Windows)
+
+### 🐧 Linux
 
 1.  **Clone the Repository:**
     ```bash
-    git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
+    git clone [https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git](https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git)
     cd MCP-Server-for-MAS-Developments/MCP-Server-with-STDIO-Support
     ```
 
@@ -35,6 +37,23 @@ This server implements the **Model Context Protocol (MCP)** using the **STDIO (S
     ```bash
     chmod +x Install-MPC-Stdio.sh
     ./Install-MPC-Stdio.sh
+    ```
+
+---
+
+### 🪟 Windows
+
+1.  **Clone the Repository:**
+    Open PowerShell and run:
+    ```powershell
+    git clone [https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git](https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git)
+    cd MCP-Server-for-MAS-Developments\MCP-Server-with-STDIO-Support
+    ```
+
+2.  **Install Dependencies:**
+    Use the provided setup script to handle dependencies and build the project automatically.
+    ```powershell
+    .\Install-MPC-Stdio.ps1
     ```
 
 3.  **Prepare Configuration:**

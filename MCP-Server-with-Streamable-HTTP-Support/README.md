@@ -22,11 +22,13 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
 
 ---
 
-## 📦 Server Installation
+## 📦 Server Installation (Linux or Windows)
+
+### 🐧 Linux
 
 1.  **Log in to your server as a user with sudo privileges and clone the repository:**
     ```bash
-    git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
+    git clone [https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git](https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git)
     cd MCP-Server-for-MAS-Developments/MCP-Server-with-Streamable-HTTP-Support
     ```
 
@@ -36,6 +38,22 @@ This server implements the **Model Context Protocol (MCP)** using the **SSE (Ser
     sudo ./Install-MPC-SSE.sh
     ```
 
+---
+
+### 🪟 Windows
+
+1.  **Open PowerShell, clone the repository, and navigate to the directory:**
+    ```powershell
+    git clone [https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git](https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git)
+    cd MCP-Server-for-MAS-Developments\MCP-Server-with-Streamable-HTTP-Support
+    ```
+
+2.  **Install dependencies:**
+    Run the installation script (ensure execution policies allow running scripts):
+    ```powershell
+    .\Install-MPC-SSE.ps1
+    ```
+  
 3.  **Prepare Configuration:**
     Create a `pgpt.env.json` in the root folder using the template below or rename the existing `pgpt.env.json.example`.
 
