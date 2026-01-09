@@ -172,6 +172,5 @@ Tokens are used to authenticate requests and ensure only authorized users can ac
 - They are short-lived and automatically expire after a predefined time.
 - Tokens are signed using HMAC or RSA, making them tamper-proof.
 
-## 📄 License & Copyright
-© 2026 **Fsas Technologies AI Team**. All rights reserved.
-This suite is optimized for deployment in professional enterprise AI environments.
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
