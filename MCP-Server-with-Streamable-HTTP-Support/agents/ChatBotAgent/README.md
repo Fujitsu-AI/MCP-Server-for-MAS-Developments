@@ -35,25 +35,25 @@ The **PrivateGPT ChatBot Agent** is a crucial component of the Fujitsu PrivateGP
 ## Setup
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/pgpt-dev/MCP-Server-for-MAS-Developments.git
-   cd MCP-Server-for-MAS-Developments
+   git clone https://github.com/Fujitsu-AI/MCP-Server-for-MAS-Developments.git
+   cd MCP-Server-for-MAS-Developments/MCP-Server-with-Streamable-HTTP-Support
    ```
 
 2. **(Optional) Create and Activate a Virtual Environment:**
    - **Windows:**
      ```bash
-     python -m venv venv
-     .\venv\Scripts\activate
+     .\InstallChatBot.ps1
      ```
    - **Unix/MacOS:**
      ```bash
-     python -m venv venv
-     source venv/bin/activate
+     chmod +x InstallChatBot.ps1
+     ./InstallChatBot.sh
      ```
 
-3. **Install Dependencies:**
+3. **In case you need to update an existing installation:**
+   Activcate your virtual environment and then
    ```bash
-   pip install -r agents/ChatBotAgent/requirements.txt
+      pip install -r agents/ChatBotAgent/requirements.txt
    ```
 
 4. **Configure the Agent:**
@@ -88,7 +88,7 @@ The **PrivateGPT ChatBot Agent** is a crucial component of the Fujitsu PrivateGP
   To start the ChatBot Agent, ensure you are in the repository's root directory and execute:
 
   ```bash
-  python -m agents.ChatBotAgent.Python.chatbot_agent
+  python3 -m agents.ChatBotAgent.Python.chatbot_agent
   ```
 
 - **Using Gunicorn (Unix-based systems):**
