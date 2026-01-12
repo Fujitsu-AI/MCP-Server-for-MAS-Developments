@@ -1,0 +1,13 @@
+{
+    "email": "udo.wuertz@fujitsu.com",
+    "password": "PrivateGPT2024!",
+    "groups": ["ISM-Data"],
+    "language": "en",
+    "api_ip": "0.0.0.0",
+    "api_port": "5001",
+    "api_key": "SecureAPI",
+    "mcp_server": {
+        "host": "192.168.100.88",
+        "port": 5000
+    }
+}

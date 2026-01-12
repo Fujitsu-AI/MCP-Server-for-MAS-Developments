@@ -1,0 +1,35 @@
+{
+  "meta": {
+    "agent_name": "ISM Agent",
+    "version": "1.0.0",
+    "created": "2025-10-25",
+    "description": "Example configuration for the ISM Agent demo setup."
+  },
+  "paths": {
+    "input": "agents/ISMAgent/data/ism_nodes.json",
+    "inventory": "agents/ISMAgent/data/ism_inventory.json", 
+    "output": "agents/ISMAgent/output/ism_nodes_report.txt",
+    "ndjson": "agents/ISMAgent/logs/ism_agent.ndjson",
+    "dump_json_dir": "agents/ISMAgent/logs/node_json",
+    "archive_dir": "agents/ISMAgent/archive"
+  },
+  "chatbot_agent": {
+    "api_url": "http://127.0.0.1:5001/ask",
+    "api_key": "<YourSecureAPIKey123>",
+    "use_public": false,
+    "groups": [],
+    "timeout_seconds": 20,
+    "prompt_template": "You are an AI service that receives merged node data as JSON and must output a standardized, narrative-style technical report that remains easy to parse and RAG-friendly.\n\nIf the JSON block below is missing, empty, or cannot be parsed, output exactly:\nERROR: missing node data\n\nJSON DATA (source):\n{json_data}\n\nTask:\nWrite ONE concise, narrative-style paragraph that summarizes all the node information from the JSON above in clear sentences, as if taken from a technical book or system report.\nInclude every key field, using the following order: Node Name → Category/Type → Model → Location (Rack Position) → Group → Status → Alarm Status → Power → CPU Summary → Memory Summary → Storage Summary (if present) → Firmware Details → Hardware/Detected Issues → Notes/Description.\n\nFormatting rules:\n- Write in {language_code}.\n- Keep it to 4–6 sentences, forming one coherent paragraph.\n- Always include “Alarm Status: <value>” explicitly in the text (e.g. “Alarm Status: Warning”).\n- If a value is missing in the JSON, mention it as “not available” or “N/A”.\n- Do NOT use bullet points, tables, key=value pairs, markdown, or pipe separators.\n- Do NOT invent fields that are not in the JSON.\n- Output ONLY the paragraph, with no heading, prefix, or commentary."
+  },
+   "sftp": {
+    "enabled": true,
+    "host": "10.1.2.3",
+    "port": 2255,
+    "username": "<FTP-Username>",
+    "password": "<FTP-Userpassword>",
+    "remote_path": "/IoT-Daten", 
+    "remote_filename": null
+  },
+  "language": "en"
+}
+

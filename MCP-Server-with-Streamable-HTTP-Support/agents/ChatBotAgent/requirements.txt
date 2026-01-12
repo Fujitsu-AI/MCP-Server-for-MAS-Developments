@@ -1,0 +1,6 @@
+flask
+flask_cors
+waitress
+gunicorn
+prometheus_client
+requests

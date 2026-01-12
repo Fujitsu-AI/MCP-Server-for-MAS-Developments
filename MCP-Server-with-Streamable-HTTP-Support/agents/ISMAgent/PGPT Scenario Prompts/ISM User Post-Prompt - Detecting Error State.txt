@@ -1,0 +1,20 @@
+After producing the table:
+Validate the extraction results
+Re-count all Alarm Status: Error nodes in the source text.
+Confirm that this number matches the number of rows in your table.
+Report if any nodes are missing, duplicated, or extra.
+
+Summarize operational impact
+Total number of affected nodes.
+Which Groups or Locations are most impacted.
+Common or repeating issue types (e.g., disk, RAM, chassis, power).
+Identify critical nodes (e.g., Power = Off and Status = Error).
+
+Provide actionable insight
+Short paragraph (3–5 sentences) summarizing what IT operations should do next.
+Use clear, executive-level language suitable for incident reviews.
+
+Output format
+Display the validated table first.
+Follow with a short Markdown section titled “Summary and Next Actions”.
+Use bullet points or concise sentences — no lengthy prose.
