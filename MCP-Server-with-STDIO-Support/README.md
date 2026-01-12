@@ -182,6 +182,5 @@ Since there is no console window for STDIO servers, errors are often silent. To 
 
 ---
 
-## 📄 License
-© 2026 **Fsas Technologies AI Team**. All rights reserved.
-This suite is optimized for deployment in professional enterprise AI environments.
+## License
+This project is licensed under the MIT License - see the LICENSE file for details.
